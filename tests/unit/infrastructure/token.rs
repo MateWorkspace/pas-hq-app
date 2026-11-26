@@ -24,7 +24,7 @@ fn access() -> AccessClaims {
     AccessClaims {
         user_id: 1,
         name: "Ada".into(),
-        roles: vec!["admin".into()],
+        role: "admin".into(),
     }
 }
 
@@ -36,7 +36,7 @@ fn refresh() -> RefreshClaims {
 }
 
 #[test]
-fn access_tokens_round_trip_with_identity_and_roles() {
+fn access_tokens_round_trip_with_identity_and_role() {
     let token = token();
     let raw = token.generate_access(&access()).unwrap();
 
@@ -101,7 +101,7 @@ fn expired_tokens_are_classified_separately() {
         &json!({
             "user_id": 1,
             "name": "Ada",
-            "roles": ["admin"],
+            "role": "admin",
             "token_type": "access",
             "sub": "1",
             "iat": 1_000_000,

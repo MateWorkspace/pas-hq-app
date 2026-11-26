@@ -1,12 +1,13 @@
-/// Identity, scope, and grants embedded in a signed access token.
+/// Identity and role embedded in a signed access token.
 ///
 /// Values are supplied by the issuing application; the token contract only frames
-/// and verifies them. Grants are a snapshot and never replace live authorization.
+/// and verifies them. The role is a slug snapshot and never replaces live
+/// authorization.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AccessClaims {
     pub user_id: i64,
     pub name: String,
-    pub roles: Vec<String>,
+    pub role: String,
 }
 
 /// Minimal identity and scope embedded in a signed refresh token.

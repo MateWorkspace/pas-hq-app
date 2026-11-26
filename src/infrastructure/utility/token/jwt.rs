@@ -93,7 +93,7 @@ impl Token for JwtToken {
         let payload = AccessPayload {
             user_id: claims.user_id,
             name: claims.name.clone(),
-            roles: claims.roles.clone(),
+            role: claims.role.clone(),
             token_type: ACCESS_TYPE.to_owned(),
             sub: claims.user_id.to_string(),
             iat,
@@ -116,7 +116,7 @@ impl Token for JwtToken {
         Ok(AccessClaims {
             user_id: payload.user_id,
             name: payload.name,
-            roles: payload.roles,
+            role: payload.role,
         })
     }
 
@@ -173,7 +173,7 @@ fn classify(error: JwtError) -> TokenError {
 struct AccessPayload {
     user_id: i64,
     name: String,
-    roles: Vec<String>,
+    role: String,
     token_type: String,
     sub: String,
     iat: u64,

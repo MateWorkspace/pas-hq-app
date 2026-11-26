@@ -1,0 +1,107 @@
+Table roles [headercolor: #7C3AED] {
+    Note: '''
+Defines role identities. slug is the stable identifier used by authorization checks,
+while name is only a display label. At most one role may be the default fallback.
+'''
+
+    id          BIGINT      [pk, increment]
+    slug        TEXT        [not null, note: 'Stable identifier; reserved even if the role is later removed.']
+    name        TEXT        [not null, note: 'Human-readable display name.']
+    description TEXT        [not null, default: '']
+    is_default  BOOLEAN     [not null, default: false, note: 'Marks the single fallback role.']
+    created_at  timestamptz [not null, default: `NOW()`]
+    updated_at  timestamptz
+    created_by  BIGINT
+    updated_by  BIGINT
+
+    Indexes {
+        slug       [unique, name: 'uq_roles_slug']
+        is_default [unique, name: 'uq_roles_is_default', note: 'Partial unique index: WHERE is_default = TRUE; at most one default role.']
+    }
+}
+
+Table permissions [headercolor: #EC4899] {
+    Note: '''
+Defines stable authorization actions such as user:get. slug is the immutable key
+referenced by role_permission grants; permissions are created, never updated.
+'''
+
+    id          BIGINT      [pk, increment]
+    slug        TEXT        [not null, note: 'Stable identifier; never reused.']
+    name        TEXT        [not null, note: 'Human-readable display name.']
+    description TEXT        [not null, default: '']
+    created_at  timestamptz [not null, default: `NOW()`]
+
+    Indexes {
+        slug [unique, name: 'uq_permissions_slug']
+    }
+}
+
+Table role_permission [headercolor: #F59E0B] {
+    Note: '''
+Grants one permission to one role and is the only source of effective authorization.
+A role/permission pair is unique, and a grant is immutable once created.
+'''
+
+    id            BIGINT      [pk, increment]
+    role_id       BIGINT      [not null]
+    permission_id BIGINT      [not null]
+    created_at    timestamptz [not null, default: `NOW()`]
+    created_by    BIGINT
+
+    Indexes {
+        (role_id, permission_id) [unique, name: 'uq_role_permission_role_id_permission_id']
+        permission_id            [name: 'idx_role_permission_permission_id']
+    }
+}
+
+Table users [headercolor: #2563EB] {
+    Note: '''
+Application identities, independent of authentication method. Each user has exactly
+one role. Credentials and login identifiers are stored separately in base_auths.
+'''
+
+    id              BIGINT      [pk, increment]
+    role_id         BIGINT      [not null, note: 'Assigned role; every user has exactly one role.']
+    name            TEXT        [not null]
+    bio             TEXT        [not null, default: '']
+    avatar_path     TEXT        [note: 'Optional object-storage key for the profile photo; NULL when unset. Never a URL or credentials.']
+    is_active       BOOLEAN     [not null, default: true, note: 'Whether the account may authenticate; a suspension does not deactivate it.']
+    suspended_until timestamptz [note: 'End of the current suspension; NULL when the account is not suspended.']
+    created_at      timestamptz [not null, default: `NOW()`]
+    updated_at      timestamptz
+    created_by      BIGINT
+    updated_by      BIGINT
+
+    Indexes {
+        role_id [name: 'idx_users_role_id']
+    }
+}
+
+Table base_auths [headercolor: #DC2626] {
+    Note: '''
+Username/password authentication data for exactly one user. Passwords are persisted
+only as one-way hashes, never plaintext. email and phone are optional login/recovery
+contacts; a unique index still permits multiple NULL values.
+'''
+
+    id                BIGINT      [pk, increment]
+    user_id           BIGINT      [not null, note: 'One base authentication record per user.']
+    username          TEXT        [not null, note: 'Stable login username.']
+    password_hash     TEXT        [not null, note: 'Encoded salted password hash; never plaintext.']
+    email             TEXT        [note: 'Optional login/recovery email.']
+    phone             TEXT        [note: 'Optional login/recovery phone.']
+    is_email_verified BOOLEAN     [not null, default: false]
+    is_phone_verified BOOLEAN     [not null, default: false]
+    created_at        timestamptz [not null, default: `NOW()`]
+    updated_at        timestamptz
+    created_by        BIGINT
+    updated_by        BIGINT
+
+    Indexes {
+        user_id  [unique, name: 'uq_base_auths_user_id']
+        username [unique, name: 'uq_base_auths_username']
+        email    [unique, name: 'uq_base_auths_email']
+        phone    [unique, name: 'uq_base_auths_phone']
+    }
+}

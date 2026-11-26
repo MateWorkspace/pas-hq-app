@@ -1,0 +1,20 @@
+Project pas_hq_app {
+    database_type: 'PostgreSQL'
+    Note: '''
+Authentication and authorization schema for pas-hq-app.
+
+users holds application identities, and base_auths holds one username/password
+credential record per user. roles and permissions define grants through
+role_permission, and at most one role may be marked default. Authentication
+sessions, tokens, and lifecycle rules remain stateless application concerns
+outside this design. Table definitions live in the numbered files below; this
+file maps relationships only.
+'''
+}
+
+use * from './01_auths.dbml'
+
+Ref: users.role_id > roles.id [delete: restrict, update: restrict]
+Ref: base_auths.user_id > users.id [delete: restrict, update: restrict]
+Ref: role_permission.role_id > roles.id [delete: cascade, update: restrict]
+Ref: role_permission.permission_id > permissions.id [delete: cascade, update: restrict]

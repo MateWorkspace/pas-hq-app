@@ -4,5 +4,5 @@ pub mod error;
 pub mod logger;
 
 pub use app::AppContext;
-pub use entity::{AccessClaims, RefreshClaims};
-pub use error::{PasswordError, TokenError};
+pub use entity::{AccessClaims, BaseAuth, Permission, RefreshClaims, Role, RolePermission, User};
+pub use error::{PasswordError, RepositoryError, TokenError};

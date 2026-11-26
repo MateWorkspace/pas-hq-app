@@ -9,5 +9,5 @@ mod shared;
 pub use base_auth::PostgresBaseAuth;
 pub use permission::PostgresPermission;
 pub use role::PostgresRole;
-pub use role_permission::PostgresRolePermission;
+pub use role_permission::{CachedRolePermission, PostgresRolePermission};
 pub use user::PostgresUser;

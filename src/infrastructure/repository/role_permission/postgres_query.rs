@@ -37,6 +37,19 @@ pub(super) fn find(role_id: i64, permission_id: i64) -> QueryBuilder<Postgres> {
     query
 }
 
+pub(super) fn find_by_role_slug(role_slug: &str) -> QueryBuilder<Postgres> {
+    let mut query = QueryBuilder::new(
+        "SELECT p.slug FROM role_permission rp \
+         JOIN roles r ON r.id = rp.role_id \
+         JOIN permissions p ON p.id = rp.permission_id \
+         WHERE r.slug = ",
+    );
+    query
+        .push_bind(role_slug.to_owned())
+        .push(" ORDER BY p.slug ASC");
+    query
+}
+
 pub(super) fn list_by_role(role_id: i64, pagination: Pagination) -> QueryBuilder<Postgres> {
     let mut query = select();
     query

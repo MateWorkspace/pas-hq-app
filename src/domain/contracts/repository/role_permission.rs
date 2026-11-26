@@ -26,6 +26,15 @@ pub trait RolePermissionRepository: Send + Sync {
         permission_id: i64,
     ) -> RepositoryFuture<'a, Option<RolePermission>>;
 
+    /// Return the permission slugs granted to the role identified by its stable
+    /// slug, ordered by slug.
+    fn find_by_role_slug<'a>(
+        &'a self,
+        context: &'a AppContext,
+        executor: Option<&'a mut dyn DbExecutor>,
+        role_slug: &'a str,
+    ) -> RepositoryFuture<'a, Vec<String>>;
+
     fn list_by_role<'a>(
         &'a self,
         context: &'a AppContext,

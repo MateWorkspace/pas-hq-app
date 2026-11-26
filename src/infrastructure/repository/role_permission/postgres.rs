@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 use crate::{
     domain::{
@@ -89,6 +89,38 @@ impl RolePermissionRepository for PostgresRolePermission {
                 self.logger.as_ref(),
                 context,
                 "repository/role_permission/find",
+                result,
+                || RepositoryError::RolePermissionNotFound,
+            )
+        })
+    }
+
+    fn find_by_role_slug<'a>(
+        &'a self,
+        context: &'a AppContext,
+        executor: Option<&'a mut dyn DbExecutor>,
+        role_slug: &'a str,
+    ) -> RepositoryFuture<'a, Vec<String>> {
+        Box::pin(async move {
+            let mut pool_executor = PoolExecutor::new(self.database.clone());
+            let executor = match executor {
+                Some(executor) => &mut *executor,
+                None => &mut pool_executor,
+            };
+            let result: Result<Vec<String>, OperationError> = async {
+                let mut query = query::find_by_role_slug(role_slug);
+                let rows = executor.fetch_all(query.build()).await?;
+                let mut items = Vec::with_capacity(rows.len());
+                for row in &rows {
+                    items.push(row.try_get("slug")?);
+                }
+                Ok(items)
+            }
+            .await;
+            finish(
+                self.logger.as_ref(),
+                context,
+                "repository/role_permission/find_by_role_slug",
                 result,
                 || RepositoryError::RolePermissionNotFound,
             )

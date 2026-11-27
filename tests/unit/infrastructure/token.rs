@@ -24,6 +24,8 @@ fn access() -> AccessClaims {
     AccessClaims {
         user_id: 1,
         name: "Ada".into(),
+        role_id: 2,
+        role_name: "Administrator".into(),
         role: "admin".into(),
     }
 }
@@ -101,6 +103,8 @@ fn expired_tokens_are_classified_separately() {
         &json!({
             "user_id": 1,
             "name": "Ada",
+            "role_id": 2,
+            "role_name": "Administrator",
             "role": "admin",
             "token_type": "access",
             "sub": "1",

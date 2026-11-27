@@ -56,5 +56,6 @@ pub(crate) fn context() -> AppContext {
         actor: Some("anonymous".into()),
         trace_id: Some(Uuid::from_u128(2)),
         execution_id: Some(Uuid::from_u128(1)),
+        claims: None,
     }
 }

@@ -9,4 +9,4 @@ pub use entity::{
     Product, ProductSku, ProductVariant, ProductVariantSelection, RefreshClaims, Role,
     RolePermission, StockMovement, User,
 };
-pub use error::{PasswordError, RepositoryError, TokenError, ValidatorError};
+pub use error::{PasswordError, RepositoryError, TokenError, UsecaseError, ValidatorError};

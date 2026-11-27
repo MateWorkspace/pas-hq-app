@@ -49,6 +49,7 @@ fn context() -> AppContext {
         actor: Some("anonymous".into()),
         execution_id: Some(Uuid::from_u128(1)),
         trace_id: Some(Uuid::from_u128(2)),
+        claims: None,
     }
 }
 
@@ -105,6 +106,7 @@ fn context_identifiers_are_emitted_in_both_formats() {
         actor: Some("anonymous".into()),
         execution_id: Some(execution_id),
         trace_id: Some(trace_id),
+        claims: None,
     };
 
     for format in [Format::Plain, Format::Json] {

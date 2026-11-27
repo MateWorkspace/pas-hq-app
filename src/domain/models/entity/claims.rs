@@ -1,12 +1,14 @@
 /// Identity and role embedded in a signed access token.
 ///
 /// Values are supplied by the issuing application; the token contract only frames
-/// and verifies them. The role is a slug snapshot and never replaces live
-/// authorization.
+/// and verifies them. The role is a snapshot and never replaces live authorization.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AccessClaims {
     pub user_id: i64,
     pub name: String,
+    pub role_id: i64,
+    pub role_name: String,
+    /// Stable role slug used for permission resolution.
     pub role: String,
 }
 

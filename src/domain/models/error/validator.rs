@@ -37,6 +37,16 @@ pub enum ValidatorError {
     UserNameTooLong,
     UserNameInvalid,
     UserBioTooLong,
+
+    LocationNameTooShort,
+    LocationNameTooLong,
+    LocationNameInvalid,
+    LocationDescriptionTooLong,
+
+    ProductBrandInvalid,
+    ProductModelInvalid,
+    ProductManufacturerInvalid,
+    ProductDescriptionTooLong,
 }
 
 impl ValidatorError {
@@ -69,6 +79,14 @@ impl ValidatorError {
             Self::UserNameTooLong => "USER_NAME_TOO_LONG",
             Self::UserNameInvalid => "USER_NAME_INVALID",
             Self::UserBioTooLong => "USER_BIO_TOO_LONG",
+            Self::LocationNameTooShort => "LOCATION_NAME_TOO_SHORT",
+            Self::LocationNameTooLong => "LOCATION_NAME_TOO_LONG",
+            Self::LocationNameInvalid => "LOCATION_NAME_INVALID",
+            Self::LocationDescriptionTooLong => "LOCATION_DESCRIPTION_TOO_LONG",
+            Self::ProductBrandInvalid => "PRODUCT_BRAND_INVALID",
+            Self::ProductModelInvalid => "PRODUCT_MODEL_INVALID",
+            Self::ProductManufacturerInvalid => "PRODUCT_MANUFACTURER_INVALID",
+            Self::ProductDescriptionTooLong => "PRODUCT_DESCRIPTION_TOO_LONG",
         }
     }
 }
@@ -103,6 +121,14 @@ impl fmt::Display for ValidatorError {
             Self::UserNameTooLong => "user name is too long",
             Self::UserNameInvalid => "user name is invalid",
             Self::UserBioTooLong => "user bio is too long",
+            Self::LocationNameTooShort => "location name is too short",
+            Self::LocationNameTooLong => "location name is too long",
+            Self::LocationNameInvalid => "location name is invalid",
+            Self::LocationDescriptionTooLong => "location description is too long",
+            Self::ProductBrandInvalid => "product brand is invalid",
+            Self::ProductModelInvalid => "product model is invalid",
+            Self::ProductManufacturerInvalid => "product manufacturer is invalid",
+            Self::ProductDescriptionTooLong => "product description is too long",
         })
     }
 }

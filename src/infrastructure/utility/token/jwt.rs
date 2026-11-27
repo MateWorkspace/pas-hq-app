@@ -93,6 +93,8 @@ impl Token for JwtToken {
         let payload = AccessPayload {
             user_id: claims.user_id,
             name: claims.name.clone(),
+            role_id: claims.role_id,
+            role_name: claims.role_name.clone(),
             role: claims.role.clone(),
             token_type: ACCESS_TYPE.to_owned(),
             sub: claims.user_id.to_string(),
@@ -108,6 +110,8 @@ impl Token for JwtToken {
         let payload = self.decode_claims::<AccessPayload>(token, &self.validation())?;
         if payload.token_type != ACCESS_TYPE
             || payload.user_id <= 0
+            || payload.role_id <= 0
+            || payload.role.is_empty()
             || payload.sub != payload.user_id.to_string()
         {
             return Err(TokenError::Invalid);
@@ -116,6 +120,8 @@ impl Token for JwtToken {
         Ok(AccessClaims {
             user_id: payload.user_id,
             name: payload.name,
+            role_id: payload.role_id,
+            role_name: payload.role_name,
             role: payload.role,
         })
     }
@@ -173,6 +179,8 @@ fn classify(error: JwtError) -> TokenError {
 struct AccessPayload {
     user_id: i64,
     name: String,
+    role_id: i64,
+    role_name: String,
     role: String,
     token_type: String,
     sub: String,

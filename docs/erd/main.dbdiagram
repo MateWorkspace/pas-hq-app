@@ -22,8 +22,8 @@
       {
         "name": "role_permission",
         "schemaName": "public",
-        "x": 492.91162109375,
-        "y": 378
+        "x": -261.47339500291434,
+        "y": 320.78914340007657
       },
       {
         "name": "users",
@@ -36,6 +36,54 @@
         "schemaName": "public",
         "x": 888.6338541666668,
         "y": 115.71566440515357
+      },
+      {
+        "name": "products",
+        "schemaName": "public",
+        "x": -416.7273396010643,
+        "y": 1201.2810134876459
+      },
+      {
+        "name": "product_variants",
+        "schemaName": "public",
+        "x": -42.99638284390312,
+        "y": 1031.3302803884176
+      },
+      {
+        "name": "product_variant_selections",
+        "schemaName": "public",
+        "x": 650.8413705066487,
+        "y": 930.2146955463279
+      },
+      {
+        "name": "product_skus",
+        "schemaName": "public",
+        "x": -21.56118642752722,
+        "y": 1481.1531507985585
+      },
+      {
+        "name": "product_sku_selections",
+        "schemaName": "public",
+        "x": 280.8292416130528,
+        "y": 1157.0252881094714
+      },
+      {
+        "name": "prices",
+        "schemaName": "public",
+        "x": 428.6513861670969,
+        "y": 1397.674537953562
+      },
+      {
+        "name": "locations",
+        "schemaName": "public",
+        "x": 790.8086079307734,
+        "y": 1575.104986899311
+      },
+      {
+        "name": "inventories",
+        "schemaName": "public",
+        "x": 428.6513861670969,
+        "y": 1729.594132471167
       }
     ],
     "tableGroupCollapseStates": [],

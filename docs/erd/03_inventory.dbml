@@ -1,0 +1,42 @@
+Table locations [headercolor: #0EA5E9] {
+    Note: '''
+A physical site that holds stock: an outlet (store) or a warehouse. kind selects the
+site role; kind-specific rules stay in the application.
+'''
+
+    id           BIGINT      [pk, increment]
+    kind         TEXT        [not null, note: 'store or warehouse.']
+    name         TEXT        [not null]
+    description  TEXT        [not null, default: '']
+    location_lat DOUBLE      [note: 'WGS84 latitude; NULL when unknown.']
+    location_lng DOUBLE      [note: 'WGS84 longitude; NULL when unknown.']
+    is_active    BOOLEAN     [not null, default: true]
+    created_at   timestamptz [not null, default: `NOW()`]
+    updated_at   timestamptz
+    created_by   BIGINT
+    updated_by   BIGINT
+
+    Indexes {
+        name [unique, name: 'uq_locations_name']
+    }
+}
+
+Table inventories [headercolor: #16A34A] {
+    Note: '''
+Current stock of one SKU at one location. The pair is unique; stock is the running
+balance, with movements and audits recorded separately.
+'''
+
+    id          BIGINT      [pk, increment]
+    location_id BIGINT      [not null]
+    sku_id      BIGINT      [not null]
+    stock       BIGINT      [not null, default: 0]
+    created_at  timestamptz [not null, default: `NOW()`]
+    updated_at  timestamptz
+    created_by  BIGINT
+    updated_by  BIGINT
+
+    Indexes {
+        (location_id, sku_id) [unique, name: 'uq_inventories_location_id_sku_id']
+    }
+}

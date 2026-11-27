@@ -1,0 +1,115 @@
+Table products [headercolor: #F97316] {
+    Note: '''
+A product model identified by brand, model, and manufacturer. Variants, their
+selections, and concrete SKUs live in child tables.
+'''
+
+    id           BIGINT      [pk, increment]
+    brand        TEXT        [not null]
+    model        TEXT        [not null]
+    manufacturer TEXT        [not null]
+    description  TEXT        [not null, default: '']
+    created_at   timestamptz [not null, default: `NOW()`]
+    updated_at   timestamptz
+    created_by   BIGINT
+    updated_by   BIGINT
+
+    Indexes {
+        (brand, model, manufacturer) [unique, name: 'uq_products_brand_model_manufacturer']
+    }
+}
+
+Table product_variants [headercolor: #EA580C] {
+    Note: '''
+A variant dimension of a product, such as Color or Storage. Names are unique per
+product.
+'''
+
+    id         BIGINT      [pk, increment]
+    product_id BIGINT      [not null]
+    name       TEXT        [not null]
+    created_at timestamptz [not null, default: `NOW()`]
+    updated_at timestamptz
+    created_by BIGINT
+    updated_by BIGINT
+
+    Indexes {
+        (product_id, name) [unique, name: 'uq_product_variants_product_id_name']
+    }
+}
+
+Table product_variant_selections [headercolor: #FB923C] {
+    Note: '''
+A selectable value of a variant dimension, such as Black or 256GB. Names are unique
+per variant.
+'''
+
+    id                 BIGINT      [pk, increment]
+    product_variant_id BIGINT      [not null]
+    name               TEXT        [not null]
+    description        TEXT        [not null, default: '']
+    created_at         timestamptz [not null, default: `NOW()`]
+    updated_at         timestamptz
+    created_by         BIGINT
+    updated_by         BIGINT
+
+    Indexes {
+        (product_variant_id, name) [unique, name: 'uq_product_variant_selections_product_variant_id_name']
+    }
+}
+
+Table product_skus [headercolor: #F59E0B] {
+    Note: '''
+The concrete sellable unit: a product combined with one selection per variant. code is
+an optional immutable business identifier for labels, barcodes, or imports — a value,
+never a join key.
+'''
+
+    id         BIGINT      [pk, increment]
+    product_id BIGINT      [not null]
+    code       TEXT        [note: 'Optional immutable business identifier; unique per product when set.']
+    created_at timestamptz [not null, default: `NOW()`]
+    updated_at timestamptz
+    created_by BIGINT
+    updated_by BIGINT
+
+    Indexes {
+        (product_id, code) [unique, name: 'uq_product_skus_product_id_code']
+    }
+}
+
+Table product_sku_selections [headercolor: #D97706] {
+    Note: '''
+Binds one variant selection to a SKU. A SKU carries exactly one selection per variant;
+the application enforces that rule.
+'''
+
+    id                   BIGINT      [pk, increment]
+    sku_id               BIGINT      [not null]
+    variant_selection_id BIGINT      [not null]
+    created_at           timestamptz [not null, default: `NOW()`]
+
+    Indexes {
+        (sku_id, variant_selection_id) [unique, name: 'uq_product_sku_selections_sku_id_variant_selection_id']
+    }
+}
+
+Table prices [headercolor: #CA8A04] {
+    Note: '''
+The price of a SKU in one currency. amount is exact decimal; the pair is unique.
+Per-outlet pricing, if needed, extends this table with location_id.
+'''
+
+    id         BIGINT      [pk, increment]
+    sku_id     BIGINT      [not null]
+    currency   TEXT        [not null, note: 'ISO 4217 code, e.g. IDR.']
+    amount     NUMERIC     [not null, note: 'Exact decimal amount.']
+    created_at timestamptz [not null, default: `NOW()`]
+    updated_at timestamptz
+    created_by BIGINT
+    updated_by BIGINT
+
+    Indexes {
+        (sku_id, currency) [unique, name: 'uq_prices_sku_id_currency']
+    }
+}

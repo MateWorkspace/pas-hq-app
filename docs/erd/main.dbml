@@ -7,14 +7,31 @@ users holds application identities, and base_auths holds one username/password
 credential record per user. roles and permissions define grants through
 role_permission, and at most one role may be marked default. Authentication
 sessions, tokens, and lifecycle rules remain stateless application concerns
-outside this design. Table definitions live in the numbered files below; this
-file maps relationships only.
+outside this design.
+
+products and their variant dimensions describe a catalog; a product_sku is the
+concrete sellable combination of variant selections, priced through prices and
+stocked through inventories. locations are the physical sites (outlets and
+warehouses) that hold stock. Table definitions live in the numbered files below;
+this file maps relationships only.
 '''
 }
 
 use * from './01_auths.dbml'
+use * from './02_catalog.dbml'
+use * from './03_inventory.dbml'
 
 Ref: users.role_id > roles.id [delete: restrict, update: restrict]
 Ref: base_auths.user_id > users.id [delete: restrict, update: restrict]
 Ref: role_permission.role_id > roles.id [delete: cascade, update: restrict]
 Ref: role_permission.permission_id > permissions.id [delete: cascade, update: restrict]
+
+Ref: product_variants.product_id > products.id [delete: restrict, update: restrict]
+Ref: product_variant_selections.product_variant_id > product_variants.id [delete: cascade, update: restrict]
+Ref: product_skus.product_id > products.id [delete: restrict, update: restrict]
+Ref: product_sku_selections.sku_id > product_skus.id [delete: cascade, update: restrict]
+Ref: product_sku_selections.variant_selection_id > product_variant_selections.id [delete: restrict, update: restrict]
+Ref: prices.sku_id > product_skus.id [delete: cascade, update: restrict]
+
+Ref: inventories.location_id > locations.id [delete: restrict, update: restrict]
+Ref: inventories.sku_id > product_skus.id [delete: restrict, update: restrict]

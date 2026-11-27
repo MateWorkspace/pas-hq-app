@@ -96,20 +96,29 @@ the application enforces that rule.
 
 Table prices [headercolor: #CA8A04] {
     Note: '''
-The price of a SKU in one currency. amount is exact decimal; the pair is unique.
-Per-outlet pricing, if needed, extends this table with location_id.
+The price of a SKU in one currency. A NULL location_id is the global price; a set
+location_id overrides it for that site. Lookups always fall back to the global row,
+so a missing outlet-specific row is not an error.
+
+amount is exact decimal. Two partial unique indexes keep the scopes separate:
+global rows are unique per (sku_id, currency) and outlet rows per
+(sku_id, currency, location_id). A plain unique index would allow duplicate global
+rows because NULL is distinct from NULL. There is no price history; a price is
+overwritten in place.
 '''
 
-    id         BIGINT      [pk, increment]
-    sku_id     BIGINT      [not null]
-    currency   TEXT        [not null, note: 'ISO 4217 code, e.g. IDR.']
-    amount     NUMERIC     [not null, note: 'Exact decimal amount.']
-    created_at timestamptz [not null, default: `NOW()`]
-    updated_at timestamptz
-    created_by BIGINT
-    updated_by BIGINT
+    id          BIGINT      [pk, increment]
+    sku_id      BIGINT      [not null]
+    location_id BIGINT      [note: 'NULL is the global price; otherwise overrides it for that location.']
+    currency    TEXT        [not null, note: 'ISO 4217 code, e.g. IDR.']
+    amount      NUMERIC     [not null, note: 'Exact decimal amount.']
+    created_at  timestamptz [not null, default: `NOW()`]
+    updated_at  timestamptz
+    created_by  BIGINT
+    updated_by  BIGINT
 
     Indexes {
-        (sku_id, currency) [unique, name: 'uq_prices_sku_id_currency']
+        (sku_id, currency) [unique, name: 'uq_prices_global', note: 'Partial unique index: WHERE location_id IS NULL']
+        (sku_id, currency, location_id) [unique, name: 'uq_prices_location', note: 'Partial unique index: WHERE location_id IS NOT NULL']
     }
 }

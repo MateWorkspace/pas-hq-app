@@ -30,7 +30,7 @@ inventories cascades from both parents: a deleted product, SKU, or regenerated c
 removes the affected stock rows, and deleting a location removes its stock. The
 database does not protect stock: the application must guard these operations, warn the
 user with the affected SKUs and the locations and quantities on hand, and record a
-write-off when destroying stock.
+write-off in stock_movements when destroying stock.
 '''
 
     id          BIGINT      [pk, increment]
@@ -45,5 +45,42 @@ write-off when destroying stock.
     Indexes {
         (location_id, sku_id) [unique, name: 'uq_inventories_location_id_sku_id']
         sku_id                [name: 'idx_inventories_sku_id']
+    }
+}
+
+Table stock_movements [headercolor: #15803D] {
+    Note: '''
+Append-only record of stock moving in, out, or between locations. Rows are never
+updated or deleted, so this is the audit trail behind inventories.stock.
+
+quantity is a positive magnitude; direction comes from the locations. A receipt has
+src_location_id NULL, an issue (sale, write-off) has dest_location_id NULL, and a
+transfer sets both. reason classifies the movement (receipt, sale, transfer,
+adjustment, write_off, return); the application validates the value set because there
+are no CHECK constraints.
+
+Each reference carries a name snapshot captured when the movement is written:
+sku_label, src_location_name, and dest_location_name. References are nullable and
+ON DELETE SET NULL, so deleting a SKU, product, or location never erases the movement,
+and the snapshot keeps it readable. The application must fill the snapshots at write
+time; they cannot be recovered later.
+'''
+
+    id                 BIGINT      [pk, increment]
+    sku_id             BIGINT      [note: 'NULL once the SKU or its product is deleted; sku_label keeps the snapshot.']
+    sku_label          TEXT        [note: 'SKU label at the time of the movement; NULL when unknown.']
+    src_location_id    BIGINT      [note: 'Origin location; NULL for stock entering the system.']
+    src_location_name  TEXT        [note: 'Origin location name at the time of the movement; NULL when there is no source.']
+    dest_location_id   BIGINT      [note: 'Destination location; NULL for stock leaving the system.']
+    dest_location_name TEXT        [note: 'Destination location name at the time of the movement; NULL when there is no destination.']
+    quantity           BIGINT      [not null, note: 'Positive magnitude; direction comes from the locations.']
+    reason             TEXT        [not null, note: 'receipt, sale, transfer, adjustment, write_off, or return.']
+    created_at         timestamptz [not null, default: `NOW()`]
+
+    Indexes {
+        sku_id             [name: 'idx_stock_movements_sku_id']
+        src_location_id    [name: 'idx_stock_movements_src_location_id']
+        dest_location_id   [name: 'idx_stock_movements_dest_location_id']
+        created_at         [name: 'idx_stock_movements_created_at']
     }
 }

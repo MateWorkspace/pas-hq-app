@@ -1,3 +1,4 @@
+DROP TABLE stock_movements;
 DROP TABLE inventories;
 DROP TABLE prices;
 DROP TABLE product_sku_selections;

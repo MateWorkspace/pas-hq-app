@@ -36,3 +36,7 @@ Ref: prices.location_id > locations.id [delete: cascade, update: restrict]
 
 Ref: inventories.location_id > locations.id [delete: cascade, update: restrict]
 Ref: inventories.sku_id > product_skus.id [delete: cascade, update: restrict]
+
+Ref: stock_movements.sku_id > product_skus.id [delete: set null, update: restrict]
+Ref: stock_movements.src_location_id > locations.id [delete: set null, update: restrict]
+Ref: stock_movements.dest_location_id > locations.id [delete: set null, update: restrict]

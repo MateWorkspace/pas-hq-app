@@ -35,6 +35,30 @@ pub enum RepositoryError {
     BaseAuthEmailConflict,
     BaseAuthPhoneConflict,
     BaseAuthUserConflict,
+
+    LocationNotFound,
+    LocationNameConflict,
+
+    ProductNotFound,
+    ProductBrandModelManufacturerConflict,
+
+    ProductVariantNotFound,
+    ProductVariantNameConflict,
+
+    ProductVariantSelectionNotFound,
+    ProductVariantSelectionNameConflict,
+
+    ProductSkuNotFound,
+    ProductSkuSelectionConflict,
+    ProductSkuCodeConflict,
+
+    PriceNotFound,
+    PriceConflict,
+
+    InventoryNotFound,
+    InventoryConflict,
+
+    StockMovementNotFound,
 }
 
 impl RepositoryError {
@@ -60,6 +84,24 @@ impl RepositoryError {
             Self::BaseAuthEmailConflict => "BASE_AUTH_EMAIL_CONFLICT",
             Self::BaseAuthPhoneConflict => "BASE_AUTH_PHONE_CONFLICT",
             Self::BaseAuthUserConflict => "BASE_AUTH_USER_CONFLICT",
+            Self::LocationNotFound => "LOCATION_NOT_FOUND",
+            Self::LocationNameConflict => "LOCATION_NAME_CONFLICT",
+            Self::ProductNotFound => "PRODUCT_NOT_FOUND",
+            Self::ProductBrandModelManufacturerConflict => {
+                "PRODUCT_BRAND_MODEL_MANUFACTURER_CONFLICT"
+            }
+            Self::ProductVariantNotFound => "PRODUCT_VARIANT_NOT_FOUND",
+            Self::ProductVariantNameConflict => "PRODUCT_VARIANT_NAME_CONFLICT",
+            Self::ProductVariantSelectionNotFound => "PRODUCT_VARIANT_SELECTION_NOT_FOUND",
+            Self::ProductVariantSelectionNameConflict => "PRODUCT_VARIANT_SELECTION_NAME_CONFLICT",
+            Self::ProductSkuNotFound => "PRODUCT_SKU_NOT_FOUND",
+            Self::ProductSkuSelectionConflict => "PRODUCT_SKU_SELECTION_CONFLICT",
+            Self::ProductSkuCodeConflict => "PRODUCT_SKU_CODE_CONFLICT",
+            Self::PriceNotFound => "PRICE_NOT_FOUND",
+            Self::PriceConflict => "PRICE_CONFLICT",
+            Self::InventoryNotFound => "INVENTORY_NOT_FOUND",
+            Self::InventoryConflict => "INVENTORY_CONFLICT",
+            Self::StockMovementNotFound => "STOCK_MOVEMENT_NOT_FOUND",
         }
     }
 }
@@ -87,6 +129,28 @@ impl fmt::Display for RepositoryError {
             Self::BaseAuthEmailConflict => "email conflicts with existing data",
             Self::BaseAuthPhoneConflict => "phone conflicts with existing data",
             Self::BaseAuthUserConflict => "user already has base authentication data",
+            Self::LocationNotFound => "location was not found",
+            Self::LocationNameConflict => "location name conflicts with existing data",
+            Self::ProductNotFound => "product was not found",
+            Self::ProductBrandModelManufacturerConflict => {
+                "product brand, model, and manufacturer conflict with existing data"
+            }
+            Self::ProductVariantNotFound => "product variant was not found",
+            Self::ProductVariantNameConflict => "product variant name conflicts with existing data",
+            Self::ProductVariantSelectionNotFound => "product variant selection was not found",
+            Self::ProductVariantSelectionNameConflict => {
+                "product variant selection name conflicts with existing data"
+            }
+            Self::ProductSkuNotFound => "product SKU was not found",
+            Self::ProductSkuSelectionConflict => {
+                "product SKU selection combination conflicts with existing data"
+            }
+            Self::ProductSkuCodeConflict => "product SKU code conflicts with existing data",
+            Self::PriceNotFound => "price was not found",
+            Self::PriceConflict => "price conflicts with existing data",
+            Self::InventoryNotFound => "inventory was not found",
+            Self::InventoryConflict => "inventory already exists for this location and SKU",
+            Self::StockMovementNotFound => "stock movement was not found",
         })
     }
 }

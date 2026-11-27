@@ -75,6 +75,8 @@ fn classify_sqlstate(code: &str, constraint: Option<&str>) -> Option<RepositoryE
     match code {
         "23505" => Some(match constraint {
             Some("uq_roles_slug") => RepositoryError::RoleSlugConflict,
+            // At most one default role: a second one is a plain conflict.
+            Some("uq_roles_is_default") => RepositoryError::Conflict,
             Some("uq_permissions_slug") => RepositoryError::PermissionSlugConflict,
             Some("uq_role_permission_role_id_permission_id") => {
                 RepositoryError::RolePermissionConflict
@@ -83,6 +85,25 @@ fn classify_sqlstate(code: &str, constraint: Option<&str>) -> Option<RepositoryE
             Some("uq_base_auths_username") => RepositoryError::BaseAuthUsernameConflict,
             Some("uq_base_auths_email") => RepositoryError::BaseAuthEmailConflict,
             Some("uq_base_auths_phone") => RepositoryError::BaseAuthPhoneConflict,
+            Some("uq_locations_name") => RepositoryError::LocationNameConflict,
+            Some("uq_products_brand_model_manufacturer") => {
+                RepositoryError::ProductBrandModelManufacturerConflict
+            }
+            Some("uq_product_variants_product_id_name") => {
+                RepositoryError::ProductVariantNameConflict
+            }
+            Some("uq_product_variant_selections_product_variant_id_name") => {
+                RepositoryError::ProductVariantSelectionNameConflict
+            }
+            Some("uq_product_skus_product_id_selection_key") => {
+                RepositoryError::ProductSkuSelectionConflict
+            }
+            Some("uq_product_skus_product_id_code") => RepositoryError::ProductSkuCodeConflict,
+            Some("uq_product_sku_selections_sku_id_variant_selection_id") => {
+                RepositoryError::ProductSkuSelectionConflict
+            }
+            Some("uq_prices_global" | "uq_prices_location") => RepositoryError::PriceConflict,
+            Some("uq_inventories_location_id_sku_id") => RepositoryError::InventoryConflict,
             _ => RepositoryError::Conflict,
         }),
         "23503" => Some(match constraint {
@@ -90,6 +111,23 @@ fn classify_sqlstate(code: &str, constraint: Option<&str>) -> Option<RepositoryE
             Some("fk_role_permission_role") => RepositoryError::RoleNotFound,
             Some("fk_role_permission_permission") => RepositoryError::PermissionNotFound,
             Some("fk_base_auths_user") => RepositoryError::UserNotFound,
+            Some("fk_product_variants_product") => RepositoryError::ProductNotFound,
+            Some("fk_product_variant_selections_variant") => {
+                RepositoryError::ProductVariantNotFound
+            }
+            Some("fk_product_skus_product") => RepositoryError::ProductNotFound,
+            Some("fk_product_sku_selections_sku") => RepositoryError::ProductSkuNotFound,
+            Some("fk_product_sku_selections_selection") => {
+                RepositoryError::ProductVariantSelectionNotFound
+            }
+            Some("fk_prices_sku") => RepositoryError::ProductSkuNotFound,
+            Some("fk_prices_location") => RepositoryError::LocationNotFound,
+            Some("fk_inventories_location") => RepositoryError::LocationNotFound,
+            Some("fk_inventories_sku") => RepositoryError::ProductSkuNotFound,
+            Some("fk_stock_movements_sku") => RepositoryError::ProductSkuNotFound,
+            Some("fk_stock_movements_src_location" | "fk_stock_movements_dest_location") => {
+                RepositoryError::LocationNotFound
+            }
             _ => RepositoryError::Conflict,
         }),
         "23502" | "23514" | "22P02" | "22001" | "22003" | "22023" => Some(RepositoryError::BadArgs),
@@ -130,6 +168,18 @@ mod tests {
             classify_sqlstate("23505", Some("unknown_index")),
             Some(RepositoryError::Conflict)
         ));
+        assert!(matches!(
+            classify_sqlstate("23505", Some("uq_products_brand_model_manufacturer")),
+            Some(RepositoryError::ProductBrandModelManufacturerConflict)
+        ));
+        assert!(matches!(
+            classify_sqlstate("23505", Some("uq_prices_location")),
+            Some(RepositoryError::PriceConflict)
+        ));
+        assert!(matches!(
+            classify_sqlstate("23505", Some("uq_locations_name")),
+            Some(RepositoryError::LocationNameConflict)
+        ));
     }
 
     #[test]
@@ -145,6 +195,14 @@ mod tests {
         assert!(matches!(
             classify_sqlstate("23503", Some("unknown_constraint")),
             Some(RepositoryError::Conflict)
+        ));
+        assert!(matches!(
+            classify_sqlstate("23503", Some("fk_inventories_sku")),
+            Some(RepositoryError::ProductSkuNotFound)
+        ));
+        assert!(matches!(
+            classify_sqlstate("23503", Some("fk_prices_location")),
+            Some(RepositoryError::LocationNotFound)
         ));
     }
 

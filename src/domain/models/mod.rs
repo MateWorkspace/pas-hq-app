@@ -4,5 +4,9 @@ pub mod error;
 pub mod logger;
 
 pub use app::AppContext;
-pub use entity::{AccessClaims, BaseAuth, Permission, RefreshClaims, Role, RolePermission, User};
+pub use entity::{
+    AccessClaims, BaseAuth, Inventory, Location, LocationKind, MovementReason, Permission, Price,
+    Product, ProductSku, ProductVariant, ProductVariantSelection, RefreshClaims, Role,
+    RolePermission, StockMovement, User,
+};
 pub use error::{PasswordError, RepositoryError, TokenError, ValidatorError};

@@ -1,13 +1,29 @@
 pub mod base_auth;
+pub mod inventory;
+pub mod location;
 pub mod permission;
+pub mod price;
+pub mod product;
+pub mod product_sku;
+pub mod product_variant;
+pub mod product_variant_selection;
 pub mod role;
 pub mod role_permission;
+pub mod stock_movement;
 pub mod user;
 
 mod shared;
 
 pub use base_auth::PostgresBaseAuth;
+pub use inventory::PostgresInventory;
+pub use location::PostgresLocation;
 pub use permission::PostgresPermission;
+pub use price::PostgresPrice;
+pub use product::PostgresProduct;
+pub use product_sku::PostgresProductSku;
+pub use product_variant::PostgresProductVariant;
+pub use product_variant_selection::PostgresProductVariantSelection;
 pub use role::PostgresRole;
 pub use role_permission::{CachedRolePermission, PostgresRolePermission};
+pub use stock_movement::PostgresStockMovement;
 pub use user::PostgresUser;

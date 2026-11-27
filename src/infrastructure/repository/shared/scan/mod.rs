@@ -1,5 +1,13 @@
 pub(crate) mod base_auth;
+pub(crate) mod inventory;
+pub(crate) mod location;
 pub(crate) mod permission;
+pub(crate) mod price;
+pub(crate) mod product;
+pub(crate) mod product_sku;
+pub(crate) mod product_variant;
+pub(crate) mod product_variant_selection;
 pub(crate) mod role;
 pub(crate) mod role_permission;
+pub(crate) mod stock_movement;
 pub(crate) mod user;

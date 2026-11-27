@@ -10,6 +10,7 @@ path = "tests/unit/main.rs"
 
 [dependencies]
 bcrypt = "0.19"
+bigdecimal = "0.4"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 jsonwebtoken = "9"
 moka = { version = "0.12", default-features = false, features = ["sync"] }
@@ -17,7 +18,7 @@ redis = { version = "1", default-features = false, features = ["tokio-comp", "co
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "=0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "chrono"] }
+sqlx = { version = "=0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "chrono", "bigdecimal"] }
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]

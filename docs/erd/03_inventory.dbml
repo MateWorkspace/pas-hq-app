@@ -25,6 +25,9 @@ Table inventories [headercolor: #16A34A] {
     Note: '''
 Current stock of one SKU at one location. The pair is unique; stock is the running
 balance, with movements and audits recorded separately.
+
+inventories.sku_id is restricted: a product, variant, or selection that is still
+stocked cannot be deleted, so the application must zero or transfer stock first.
 '''
 
     id          BIGINT      [pk, increment]
@@ -38,5 +41,6 @@ balance, with movements and audits recorded separately.
 
     Indexes {
         (location_id, sku_id) [unique, name: 'uq_inventories_location_id_sku_id']
+        sku_id                [name: 'idx_inventories_sku_id']
     }
 }

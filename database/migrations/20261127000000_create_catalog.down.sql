@@ -1,0 +1,8 @@
+DROP TABLE inventories;
+DROP TABLE prices;
+DROP TABLE product_sku_selections;
+DROP TABLE product_skus;
+DROP TABLE product_variant_selections;
+DROP TABLE product_variants;
+DROP TABLE products;
+DROP TABLE locations;

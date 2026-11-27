@@ -60,21 +60,27 @@ per variant.
 
 Table product_skus [headercolor: #F59E0B] {
     Note: '''
-The concrete sellable unit: a product combined with one selection per variant. code is
-an optional immutable business identifier for labels, barcodes, or imports — a value,
-never a join key.
+The concrete sellable unit: a product combined with one selection per variant.
+
+selection_key is the deterministic identity: the sorted selection identifiers joined by
+"-", so rebuilding a catalog after a variant change keeps unchanged SKUs (and their
+prices and stock) and deletes only the combinations that genuinely disappeared.
+code is an optional immutable business identifier for labels, barcodes, or imports —
+a value, never a join key.
 '''
 
-    id         BIGINT      [pk, increment]
-    product_id BIGINT      [not null]
-    code       TEXT        [note: 'Optional immutable business identifier; unique per product when set.']
-    created_at timestamptz [not null, default: `NOW()`]
-    updated_at timestamptz
-    created_by BIGINT
-    updated_by BIGINT
+    id            BIGINT      [pk, increment]
+    product_id    BIGINT      [not null]
+    selection_key TEXT        [not null, default: '', note: 'Sorted selection identifiers joined by "-"; empty when the product has no variants.']
+    code          TEXT        [note: 'Optional immutable business identifier; unique per product when set.']
+    created_at    timestamptz [not null, default: `NOW()`]
+    updated_at    timestamptz
+    created_by    BIGINT
+    updated_by    BIGINT
 
     Indexes {
-        (product_id, code) [unique, name: 'uq_product_skus_product_id_code']
+        (product_id, selection_key) [unique, name: 'uq_product_skus_product_id_selection_key']
+        (product_id, code)          [unique, name: 'uq_product_skus_product_id_code']
     }
 }
 

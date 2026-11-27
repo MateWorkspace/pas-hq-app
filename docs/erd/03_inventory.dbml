@@ -26,8 +26,11 @@ Table inventories [headercolor: #16A34A] {
 Current stock of one SKU at one location. The pair is unique; stock is the running
 balance, with movements and audits recorded separately.
 
-inventories.sku_id is restricted: a product, variant, or selection that is still
-stocked cannot be deleted, so the application must zero or transfer stock first.
+inventories cascades from both parents: a deleted product, SKU, or regenerated catalog
+removes the affected stock rows, and deleting a location removes its stock. The
+database does not protect stock: the application must guard these operations, warn the
+user with the affected SKUs and the locations and quantities on hand, and record a
+write-off when destroying stock.
 '''
 
     id          BIGINT      [pk, increment]

@@ -62,9 +62,33 @@ Table product_skus [headercolor: #F59E0B] {
     Note: '''
 The concrete sellable unit: a product combined with one selection per variant.
 
+SKUs are generated, never authored: they appear once every variant has at least one
+selection and the combination count is under the application cap. Any later change to
+the variants or selections re-runs generation inside the same transaction, so deleting
+a variant or selection needs no separate path.
+
+The database does not do this. No foreign key can delete a SKU because its child count
+dropped, so a variant or selection delete leaves SKUs (and their prices and stock) in
+place. The application must run the cleanup below, in the same transaction as the
+design change; if it forgets, malformed SKUs survive silently and nothing complains.
+
+Generation diffs against selection_key instead of wiping the product:
+desired = one key per valid combination, existing = current keys for the product.
+Missing keys are inserted, shared keys are left untouched so their prices and stock
+survive, and keys that disappeared are deleted. Deleting a variant or a selection is
+just a design change: recompute the valid key set, then remove every SKU of the product
+whose key is not in it. Since prices and inventories cascade from sku_id, that one
+delete also removes their pricing and stock. Renaming a variant or adding an option
+therefore never destroys stock.
+
+Inventories cascade from sku_id and from location_id, so the database never protects
+stock. The application must guard the operation before it runs: list the affected SKUs
+with the locations and quantities on hand, require explicit confirmation, and record a
+write-off so audited stock is not destroyed unaccounted for.
+
 selection_key is the deterministic identity: the sorted selection identifiers joined by
-"-", so rebuilding a catalog after a variant change keeps unchanged SKUs (and their
-prices and stock) and deletes only the combinations that genuinely disappeared.
+"-". A newly generated SKU has no price, because prices fall back from an outlet row to
+the global row of the same SKU, never to a product-wide default.
 code is an optional immutable business identifier for labels, barcodes, or imports —
 a value, never a join key.
 '''
@@ -106,7 +130,8 @@ The price of a SKU in one currency. A NULL location_id is the global price; a se
 location_id overrides it for that site. Lookups always fall back to the global row,
 so a missing outlet-specific row is not an error.
 
-amount is exact decimal. Two partial unique indexes keep the scopes separate:
+Deleting a location cascades its overrides, so the affected SKUs fall back to global
+pricing. amount is exact decimal. Two partial unique indexes keep the scopes separate:
 global rows are unique per (sku_id, currency) and outlet rows per
 (sku_id, currency, location_id). A plain unique index would allow duplicate global
 rows because NULL is distinct from NULL. There is no price history; a price is

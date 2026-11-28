@@ -14,7 +14,7 @@ use axum::{
 use crate::presentation::http::{
     Dependencies,
     dto::{
-        request::{access::user::ListPermissionsQuery, page::PageQuery},
+        request::access::user::ListPermissionsQuery,
         response::{access::PermissionListResponse, error::ApiError, page::PageResponse},
     },
     middleware::RequestContext,
@@ -54,14 +54,15 @@ async fn create_permission(
 async fn list_permissions(
     State(dependencies): State<Arc<Dependencies>>,
     RequestContext(context): RequestContext,
-    query: Result<Query<(ListPermissionsQuery, PageQuery)>, QueryRejection>,
+    query: Result<Query<ListPermissionsQuery>, QueryRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Query((request, page)) = query?;
-    let page = page.into_page();
+    let Query(request) = query?;
+    let page =
+        crate::presentation::http::dto::request::page::page_from(request.limit, request.offset);
 
     let permissions = dependencies
         .manage_permission
-        .list_permissions(&context, request.into_list(page))
+        .list_permissions(&context, request.into_list())
         .await
         .map_err(list_permissions_error)?;
 

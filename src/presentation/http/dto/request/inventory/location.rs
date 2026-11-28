@@ -2,10 +2,7 @@ use serde::Deserialize;
 
 use crate::domain::{
     models::LocationKind,
-    usecases::{
-        Page,
-        location::manage::{CreateLocation, ListLocations, UpdateLocation},
-    },
+    usecases::location::manage::{CreateLocation, ListLocations, UpdateLocation},
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -69,16 +66,23 @@ impl UpdateLocationRequest {
     }
 }
 
+/// List filter with paging.
+///
+/// Paging is declared here instead of flattened from `PageQuery`: the query
+/// extractor uses `serde_urlencoded`, which cannot deserialize `flatten`.
 #[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct ListLocationsQuery {
     pub kind: Option<String>,
     pub is_active: Option<bool>,
     pub name_contains: Option<String>,
+    #[serde(default = "crate::presentation::http::dto::request::page::default_limit")]
+    pub limit: u32,
+    #[serde(default)]
+    pub offset: u32,
 }
 
 impl ListLocationsQuery {
-    pub(crate) fn into_list(self, page: Page) -> Result<ListLocations, String> {
+    pub(crate) fn into_list(self) -> Result<ListLocations, String> {
         let kind = match self.kind {
             Some(kind) => Some(
                 kind.parse::<LocationKind>()
@@ -91,7 +95,7 @@ impl ListLocationsQuery {
             kind,
             is_active: self.is_active,
             name_contains: self.name_contains,
-            page,
+            page: crate::presentation::http::dto::request::page::page_from(self.limit, self.offset),
         })
     }
 }

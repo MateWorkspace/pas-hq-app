@@ -106,6 +106,9 @@ fn classify_sqlstate(code: &str, constraint: Option<&str>) -> Option<RepositoryE
             Some("uq_inventories_location_id_sku_id") => RepositoryError::InventoryConflict,
             _ => RepositoryError::Conflict,
         }),
+        // A RESTRICT foreign key reports 23001 rather than 23503 when the
+        // referenced row is still in use.
+        "23001" => Some(RepositoryError::Conflict),
         "23503" => Some(match constraint {
             Some("fk_users_role") => RepositoryError::UserRoleNotFound,
             Some("fk_role_permission_role") => RepositoryError::RoleNotFound,

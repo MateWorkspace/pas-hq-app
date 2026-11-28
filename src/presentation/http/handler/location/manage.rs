@@ -18,7 +18,6 @@ use crate::presentation::http::{
             inventory::location::{
                 CreateLocationRequest, ListLocationsQuery, UpdateLocationRequest,
             },
-            page::PageQuery,
             path::IdPath,
         },
         response::{error::ApiError, location::LocationListResponse, page::PageResponse},
@@ -127,12 +126,13 @@ async fn delete_location(
 async fn list_locations(
     State(dependencies): State<Arc<Dependencies>>,
     RequestContext(context): RequestContext,
-    query: Result<Query<(ListLocationsQuery, PageQuery)>, QueryRejection>,
+    query: Result<Query<ListLocationsQuery>, QueryRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Query((request, page)) = query?;
-    let page = page.into_page();
+    let Query(request) = query?;
+    let page =
+        crate::presentation::http::dto::request::page::page_from(request.limit, request.offset);
 
-    let request = request.into_list(page).map_err(|message| {
+    let request = request.into_list().map_err(|message| {
         ApiError::bad_request("LOCATION_KIND_INVALID", format!("The {message}."))
     })?;
 

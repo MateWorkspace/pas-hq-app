@@ -94,10 +94,12 @@ pub(crate) fn delete_role_error(error: UsecaseError) -> ApiError {
             "ROLE_NOT_FOUND",
             "The role you tried to delete does not exist.",
         ),
-        UsecaseError::Repository(RepositoryError::UserRoleNotFound) => ApiError::conflict(
-            "ROLE_IN_USE",
-            "This role is assigned to one or more users and cannot be deleted.",
-        ),
+        UsecaseError::Repository(RepositoryError::Conflict | RepositoryError::UserRoleNotFound) => {
+            ApiError::conflict(
+                "ROLE_IN_USE",
+                "This role is still assigned to users or grants and cannot be deleted.",
+            )
+        }
         UsecaseError::Repository(_) => ApiError::internal(
             "ROLE_DELETE_FAILED",
             "The role could not be deleted right now. Please try again.",

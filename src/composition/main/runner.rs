@@ -85,6 +85,7 @@ pub(super) async fn run(
     let result = async {
         let wiring = wiring.await?;
         migrate(&drivers.pool).await?;
+        seed(&drivers.pool).await?;
         run_server(env, &drivers.logger, wiring.presentation, shutdown).await
     }
     .await;
@@ -96,6 +97,19 @@ async fn migrate(pool: &PgPool) -> Result<(), LaunchError> {
         .run(pool)
         .await
         .map_err(|error| LaunchError::Migration(Box::new(error)))
+}
+
+/// Apply pending seed files using their own version table.
+///
+/// Seeds run after migrations because they depend on the schema, and they keep
+/// separate history in `schema_seeds` so schema and data versions evolve apart.
+async fn seed(pool: &PgPool) -> Result<(), LaunchError> {
+    let mut seeds = sqlx::migrate!("./database/seeds");
+    seeds.dangerous_set_table_name("schema_seeds");
+    seeds
+        .run(pool)
+        .await
+        .map_err(|error| LaunchError::Seed(Box::new(error)))
 }
 
 async fn close_pool(
@@ -207,6 +221,7 @@ pub enum LaunchError {
     Database(Box<dyn Error + Send + Sync>),
     Cache(Box<dyn Error + Send + Sync>),
     Migration(Box<dyn Error + Send + Sync>),
+    Seed(Box<dyn Error + Send + Sync>),
     Bind {
         source: io::Error,
     },
@@ -224,6 +239,7 @@ impl fmt::Display for LaunchError {
             Self::Database(_) => formatter.write_str("could not initialize the database pool"),
             Self::Cache(_) => formatter.write_str("could not initialize the cache backend"),
             Self::Migration(_) => formatter.write_str("could not apply schema migrations"),
+            Self::Seed(_) => formatter.write_str("could not apply seed data"),
             Self::Bind { .. } => formatter.write_str("could not bind the HTTP listener"),
             Self::Serve { .. } => formatter.write_str("HTTP server failed"),
             Self::ServerStopped => formatter.write_str("HTTP server stopped unexpectedly"),
@@ -236,9 +252,10 @@ impl Error for LaunchError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Signal(source) => Some(source),
-            Self::Database(source) | Self::Cache(source) | Self::Migration(source) => {
-                Some(source.as_ref())
-            }
+            Self::Database(source)
+            | Self::Cache(source)
+            | Self::Migration(source)
+            | Self::Seed(source) => Some(source.as_ref()),
             Self::Bind { source } => Some(source),
             Self::Serve { source } => Some(source.as_ref()),
             Self::ServerStopped | Self::ShutdownTimeout => None,

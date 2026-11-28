@@ -16,7 +16,6 @@ use crate::presentation::http::{
     dto::{
         request::{
             catalog::product::{CreateProductRequest, ListProductsQuery, UpdateProductRequest},
-            page::PageQuery,
             path::IdPath,
         },
         response::{catalog::ProductListResponse, error::ApiError, page::PageResponse},
@@ -100,14 +99,15 @@ async fn delete_product(
 async fn list_products(
     State(dependencies): State<Arc<Dependencies>>,
     RequestContext(context): RequestContext,
-    query: Result<Query<(ListProductsQuery, PageQuery)>, QueryRejection>,
+    query: Result<Query<ListProductsQuery>, QueryRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Query((request, page)) = query?;
-    let page = page.into_page();
+    let Query(request) = query?;
+    let page =
+        crate::presentation::http::dto::request::page::page_from(request.limit, request.offset);
 
     let products = dependencies
         .manage_product
-        .list_products(&context, request.into_list(page))
+        .list_products(&context, request.into_list())
         .await
         .map_err(list_products_error)?;
 

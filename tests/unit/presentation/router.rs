@@ -108,7 +108,7 @@ impl Session for StubSession {
     ) -> UsecaseFuture<'a, AccessClaims> {
         let token = access_token.to_owned();
         Box::pin(async move {
-            if token == "good-token" {
+            if token == "good-token" || token == "admin-token" {
                 Ok(AccessClaims {
                     user_id: 1,
                     name: "Ada".into(),
@@ -161,6 +161,11 @@ stub_usecase!(StubApiKeyAuth);
 stub_usecase!(StubManageApiKey);
 stub_usecase!(StubManageOwnApiKey);
 
+/// List stubs return an empty page so query parsing is the only variable.
+fn empty<'a, T: Default + Send + 'a>() -> UsecaseFuture<'a, T> {
+    Box::pin(async { Ok(T::default()) })
+}
+
 fn unreachable_repository<'a, T: Send + 'a>() -> UsecaseFuture<'a, T> {
     Box::pin(async {
         Err(UsecaseError::Repository(
@@ -192,7 +197,7 @@ impl ManageRole for StubRole {
         _: &'a AppContext,
         _: pas_hq_app::domain::usecases::access::role::ListRoles,
     ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::Role>> {
-        unreachable_repository()
+        empty()
     }
     fn get_role_permissions<'a>(
         &'a self,
@@ -230,7 +235,7 @@ impl ManagePermission for StubPermission {
         _: &'a AppContext,
         _: pas_hq_app::domain::usecases::access::permission::ListPermissions,
     ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::Permission>> {
-        unreachable_repository()
+        empty()
     }
 }
 
@@ -257,7 +262,7 @@ impl ManageUser for StubUser {
         _: &'a AppContext,
         _: pas_hq_app::domain::usecases::access::user::ListUsers,
     ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::User>> {
-        unreachable_repository()
+        empty()
     }
     fn get_user<'a>(
         &'a self,
@@ -317,7 +322,7 @@ impl ManageProduct for StubProduct {
         _: &'a AppContext,
         _: pas_hq_app::domain::usecases::catalog::product::ListProducts,
     ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::Product>> {
-        unreachable_repository()
+        empty()
     }
     fn get_product<'a>(
         &'a self,
@@ -463,7 +468,7 @@ impl GetStock for StubStockRead {
         _: &'a AppContext,
         _: pas_hq_app::domain::usecases::inventory::stock::StockBySku,
     ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::Inventory>> {
-        unreachable_repository()
+        empty()
     }
 }
 
@@ -483,7 +488,7 @@ impl ListStock for StubStockList {
         _: &'a AppContext,
         _: pas_hq_app::domain::usecases::inventory::stock::MovementBySku,
     ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::StockMovement>> {
-        unreachable_repository()
+        empty()
     }
     fn list_stock_movements_by_location<'a>(
         &'a self,
@@ -534,7 +539,7 @@ impl ManageLocation for StubLocation {
         _: &'a AppContext,
         _: pas_hq_app::domain::usecases::location::manage::ListLocations,
     ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::Location>> {
-        unreachable_repository()
+        empty()
     }
     fn get_location<'a>(
         &'a self,
@@ -644,7 +649,7 @@ impl ManageOwnApiKey for StubManageOwnApiKey {
     }
 }
 
-fn dependencies() -> Dependencies {
+pub(crate) fn stub_dependencies() -> Dependencies {
     let logger: Arc<dyn Logger> = Arc::new(
         pas_hq_app::infrastructure::utility::logger::WriterLogger::new(
             std::io::sink(),
@@ -680,7 +685,7 @@ fn dependencies() -> Dependencies {
 
 #[tokio::test]
 async fn protected_route_without_token_is_unauthorized() {
-    let app = router(dependencies());
+    let app = router(stub_dependencies());
 
     let response = app
         .oneshot(
@@ -697,7 +702,7 @@ async fn protected_route_without_token_is_unauthorized() {
 
 #[tokio::test]
 async fn protected_route_with_invalid_token_is_unauthorized() {
-    let app = router(dependencies());
+    let app = router(stub_dependencies());
 
     let response = app
         .oneshot(
@@ -715,7 +720,7 @@ async fn protected_route_with_invalid_token_is_unauthorized() {
 
 #[tokio::test]
 async fn an_api_key_authenticates_a_protected_route() {
-    let app = router(dependencies());
+    let app = router(stub_dependencies());
 
     let response = app
         .oneshot(
@@ -735,7 +740,7 @@ async fn an_api_key_authenticates_a_protected_route() {
 
 #[tokio::test]
 async fn an_invalid_api_key_is_unauthorized() {
-    let app = router(dependencies());
+    let app = router(stub_dependencies());
 
     let response = app
         .oneshot(
@@ -753,7 +758,7 @@ async fn an_invalid_api_key_is_unauthorized() {
 
 #[tokio::test]
 async fn a_bearer_token_takes_precedence_over_an_api_key() {
-    let app = router(dependencies());
+    let app = router(stub_dependencies());
 
     // Bearer is valid and the API key is not: preferring bearer must succeed.
     let response = app
@@ -773,7 +778,7 @@ async fn a_bearer_token_takes_precedence_over_an_api_key() {
 
 #[tokio::test]
 async fn unknown_field_in_body_is_rejected() {
-    let app = router(dependencies());
+    let app = router(stub_dependencies());
 
     let response = app
         .oneshot(

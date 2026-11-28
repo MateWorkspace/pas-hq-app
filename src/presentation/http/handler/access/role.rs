@@ -18,7 +18,6 @@ use crate::presentation::http::{
             access::role::{
                 CreateRoleRequest, GrantPermissionRequest, ListRolesQuery, UpdateRoleRequest,
             },
-            page::PageQuery,
             path::IdPath,
         },
         response::{
@@ -107,14 +106,15 @@ async fn delete_role(
 async fn list_roles(
     State(dependencies): State<Arc<Dependencies>>,
     RequestContext(context): RequestContext,
-    query: Result<Query<(ListRolesQuery, PageQuery)>, QueryRejection>,
+    query: Result<Query<ListRolesQuery>, QueryRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Query((request, page)) = query?;
-    let page = page.into_page();
+    let Query(request) = query?;
+    let page =
+        crate::presentation::http::dto::request::page::page_from(request.limit, request.offset);
 
     let roles = dependencies
         .manage_role
-        .list_roles(&context, request.into_list(page))
+        .list_roles(&context, request.into_list())
         .await
         .map_err(list_roles_error)?;
 

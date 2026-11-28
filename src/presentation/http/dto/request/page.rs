@@ -2,8 +2,12 @@ use serde::Deserialize;
 
 use crate::domain::usecases::Page;
 
+/// Paging parameters accepted by every list endpoint.
+///
+/// List queries declare these fields directly rather than flattening this struct:
+/// the query extractor uses `serde_urlencoded`, which cannot deserialize
+/// `flatten`. Keeping the bounds here means every endpoint clamps identically.
 #[derive(Clone, Copy, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct PageQuery {
     #[serde(default = "default_limit")]
     pub limit: u32,
@@ -12,20 +16,28 @@ pub struct PageQuery {
 }
 
 impl PageQuery {
+    /// Clamp the caller's request into a bounded page.
     pub(crate) fn into_page(self) -> Page {
-        let limit = if self.limit == 0 {
-            default_limit()
-        } else {
-            self.limit.min(100)
-        };
-
-        Page {
-            limit,
-            offset: self.offset,
-        }
+        page_from(self.limit, self.offset)
     }
 }
 
-const fn default_limit() -> u32 {
+/// Build a bounded page from raw query values.
+pub(crate) fn page_from(limit: u32, offset: u32) -> Page {
+    Page {
+        limit: if limit == 0 {
+            default_limit()
+        } else {
+            limit.min(max_limit())
+        },
+        offset,
+    }
+}
+
+pub(crate) const fn default_limit() -> u32 {
     10
+}
+
+pub(crate) const fn max_limit() -> u32 {
+    100
 }

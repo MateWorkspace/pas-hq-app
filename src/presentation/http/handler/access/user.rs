@@ -16,7 +16,6 @@ use crate::presentation::http::{
     dto::{
         request::{
             access::user::{CreateUserRequest, ListUsersQuery, UpdateUserRequest},
-            page::PageQuery,
             path::IdPath,
         },
         response::{access::UserListResponse, error::ApiError, page::PageResponse},
@@ -99,14 +98,15 @@ async fn delete_user(
 async fn list_users(
     State(dependencies): State<Arc<Dependencies>>,
     RequestContext(context): RequestContext,
-    query: Result<Query<(ListUsersQuery, PageQuery)>, QueryRejection>,
+    query: Result<Query<ListUsersQuery>, QueryRejection>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Query((request, page)) = query?;
-    let page = page.into_page();
+    let Query(request) = query?;
+    let page =
+        crate::presentation::http::dto::request::page::page_from(request.limit, request.offset);
 
     let users = dependencies
         .manage_user
-        .list_users(&context, request.into_list(page))
+        .list_users(&context, request.into_list())
         .await
         .map_err(list_users_error)?;
 

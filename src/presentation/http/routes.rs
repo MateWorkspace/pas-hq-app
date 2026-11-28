@@ -3,12 +3,14 @@ use std::sync::Arc;
 use axum::{Router, middleware};
 
 use super::{Dependencies, dto::response::error::ApiError, handler, middleware::context};
+use crate::domain::models::AppInfo;
 
 /// Assembles the HTTP surface.
 ///
-/// Sign-in and refresh run under an open context; every other route requires a
-/// bearer token and runs under the authenticated user's context.
-pub fn router(dependencies: Dependencies) -> Router {
+/// Sign-in, refresh, and the version endpoint run under an open context; every
+/// other route requires a bearer token and runs under the authenticated user's
+/// context.
+pub fn router(dependencies: Dependencies, app_info: AppInfo) -> Router {
     let state = Arc::new(dependencies);
 
     let open_context = Arc::clone(&state.create_app_context);
@@ -18,6 +20,7 @@ pub fn router(dependencies: Dependencies) -> Router {
 
     let public = Router::new()
         .merge(handler::auth::routes())
+        .merge(handler::version::routes(app_info))
         .layer(middleware::from_fn(move |request, next| {
             let create_app_context = Arc::clone(&open_context);
             async move { context::open(create_app_context, request, next).await }

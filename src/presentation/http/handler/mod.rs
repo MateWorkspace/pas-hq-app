@@ -4,3 +4,4 @@ pub(crate) mod catalog;
 pub(crate) mod inventory;
 pub(crate) mod location;
 pub(crate) mod profile;
+pub(crate) mod version;

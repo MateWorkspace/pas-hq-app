@@ -649,6 +649,17 @@ impl ManageOwnApiKey for StubManageOwnApiKey {
     }
 }
 
+/// Build the test router with fixed build metadata.
+pub(crate) fn stub_app() -> axum::Router {
+    router(
+        stub_dependencies(),
+        pas_hq_app::domain::models::AppInfo {
+            name: "pas-hq-app",
+            version: "0.1.0-test",
+        },
+    )
+}
+
 pub(crate) fn stub_dependencies() -> Dependencies {
     let logger: Arc<dyn Logger> = Arc::new(
         pas_hq_app::infrastructure::utility::logger::WriterLogger::new(
@@ -685,7 +696,7 @@ pub(crate) fn stub_dependencies() -> Dependencies {
 
 #[tokio::test]
 async fn protected_route_without_token_is_unauthorized() {
-    let app = router(stub_dependencies());
+    let app = stub_app();
 
     let response = app
         .oneshot(
@@ -702,7 +713,7 @@ async fn protected_route_without_token_is_unauthorized() {
 
 #[tokio::test]
 async fn protected_route_with_invalid_token_is_unauthorized() {
-    let app = router(stub_dependencies());
+    let app = stub_app();
 
     let response = app
         .oneshot(
@@ -720,7 +731,7 @@ async fn protected_route_with_invalid_token_is_unauthorized() {
 
 #[tokio::test]
 async fn an_api_key_authenticates_a_protected_route() {
-    let app = router(stub_dependencies());
+    let app = stub_app();
 
     let response = app
         .oneshot(
@@ -740,7 +751,7 @@ async fn an_api_key_authenticates_a_protected_route() {
 
 #[tokio::test]
 async fn an_invalid_api_key_is_unauthorized() {
-    let app = router(stub_dependencies());
+    let app = stub_app();
 
     let response = app
         .oneshot(
@@ -758,7 +769,7 @@ async fn an_invalid_api_key_is_unauthorized() {
 
 #[tokio::test]
 async fn a_bearer_token_takes_precedence_over_an_api_key() {
-    let app = router(stub_dependencies());
+    let app = stub_app();
 
     // Bearer is valid and the API key is not: preferring bearer must succeed.
     let response = app
@@ -778,7 +789,7 @@ async fn a_bearer_token_takes_precedence_over_an_api_key() {
 
 #[tokio::test]
 async fn unknown_field_in_body_is_rejected() {
-    let app = router(stub_dependencies());
+    let app = stub_app();
 
     let response = app
         .oneshot(

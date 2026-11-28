@@ -1,11 +1,9 @@
+use super::router::stub_app;
 use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
-use pas_hq_app::presentation::http::router;
 use tower::ServiceExt;
-
-use super::router::stub_dependencies;
 
 /// Query parsing is the fragile part of the list endpoints: the extractor uses
 /// `serde_urlencoded`, which cannot deserialize `flatten`. These cases fail loudly
@@ -26,7 +24,7 @@ async fn list_endpoints_accept_query_strings_with_and_without_paging() {
     ];
 
     for path in cases {
-        let app = router(stub_dependencies());
+        let app = stub_app();
 
         let response = app
             .oneshot(

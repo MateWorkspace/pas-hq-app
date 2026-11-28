@@ -8,3 +8,4 @@ pub mod location;
 pub mod model;
 pub mod page;
 pub mod profile;
+pub mod version;

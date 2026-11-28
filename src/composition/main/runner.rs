@@ -72,7 +72,7 @@ async fn run_entry(
         "service starting",
         Some(&meta),
     );
-    launcher::run(&env, logger, shutdown).await
+    launcher::run(&env, app_info, logger, shutdown).await
 }
 
 /// Supervise wiring and execution while retaining the driver for cleanup.

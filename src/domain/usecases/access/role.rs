@@ -32,7 +32,6 @@ pub trait ManageRole: Send + Sync {
         context: &'a AppContext,
         id: i64,
     ) -> UsecaseFuture<'a, Vec<String>>;
-
     fn grant_permission<'a>(
         &'a self,
         context: &'a AppContext,

@@ -189,6 +189,36 @@ impl ProductSkuRepository for PostgresProductSku {
         })
     }
 
+    fn update_code<'a>(
+        &'a self,
+        context: &'a AppContext,
+        executor: Option<&'a mut dyn DbExecutor>,
+        id: i64,
+        code: Option<String>,
+        updated_by: Option<i64>,
+    ) -> RepositoryFuture<'a, ProductSku> {
+        Box::pin(async move {
+            let mut pool_executor = PoolExecutor::new(self.database.clone());
+            let executor = match executor {
+                Some(executor) => &mut *executor,
+                None => &mut pool_executor,
+            };
+            let result: Result<ProductSku, OperationError> = async {
+                let mut query = query::update_code(id, code.as_deref(), updated_by);
+                let row = executor.fetch_one(query.build()).await?;
+                Ok(scan::product_sku::decode(&row)?)
+            }
+            .await;
+            finish(
+                self.logger.as_ref(),
+                context,
+                "repository/product_sku/update_code",
+                result,
+                || RepositoryError::ProductSkuNotFound,
+            )
+        })
+    }
+
     fn delete<'a>(
         &'a self,
         context: &'a AppContext,

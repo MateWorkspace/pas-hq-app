@@ -80,6 +80,23 @@ pub(super) fn list_selection_ids(sku_id: i64) -> QueryBuilder<Postgres> {
     query
 }
 
+pub(super) fn update_code(
+    id: i64,
+    code: Option<&str>,
+    updated_by: Option<i64>,
+) -> QueryBuilder<Postgres> {
+    let mut query = QueryBuilder::new("UPDATE product_skus SET code = ");
+    query.push_bind(code.map(str::to_owned));
+    query.push(", updated_at = NOW(), updated_by = ");
+    query.push_bind(updated_by);
+    query
+        .push(" WHERE id = ")
+        .push_bind(id)
+        .push(" RETURNING ")
+        .push(COLUMNS);
+    query
+}
+
 pub(super) fn delete(id: i64) -> QueryBuilder<Postgres> {
     let mut query = QueryBuilder::new("DELETE FROM product_skus WHERE id = ");
     query.push_bind(id);

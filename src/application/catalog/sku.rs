@@ -179,27 +179,20 @@ impl ManageSku for SkuManagement {
                 .require(context, &[SKU_UPDATE])
                 .await?;
 
-            match self.skus.find_by_id(context, None, input.sku_id).await {
-                Ok(Some(sku)) => {
+            match self
+                .skus
+                .update_code(context, None, input.sku_id, input.code, context.actor_id())
+                .await
+            {
+                Ok(sku) => {
                     let meta = Meta::from([("sku_id".into(), sku.id.into())]);
                     self.logger.info(
                         context,
                         "application/catalog/sku/set_code",
-                        "SKU code unchanged by the repository contract",
+                        "SKU code updated",
                         Some(&meta),
                     );
                     Ok(sku)
-                }
-                Ok(None) => {
-                    self.logger.error(
-                        context,
-                        "application/catalog/sku/set_code",
-                        "SKU was not found",
-                        Some(&Meta::from([("sku_id".into(), input.sku_id.into())])),
-                    );
-                    Err(UsecaseError::Repository(
-                        RepositoryError::ProductSkuNotFound,
-                    ))
                 }
                 Err(error) => {
                     self.log_repository_error(context, "application/catalog/sku/set_code", &error);

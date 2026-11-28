@@ -49,6 +49,16 @@ pub trait ProductSkuRepository: Send + Sync {
         sku_id: i64,
     ) -> RepositoryFuture<'a, Vec<i64>>;
 
+    /// Set or clear the optional business code for one SKU.
+    fn update_code<'a>(
+        &'a self,
+        context: &'a AppContext,
+        executor: Option<&'a mut dyn DbExecutor>,
+        id: i64,
+        code: Option<String>,
+        updated_by: Option<i64>,
+    ) -> RepositoryFuture<'a, ProductSku>;
+
     fn delete<'a>(
         &'a self,
         context: &'a AppContext,

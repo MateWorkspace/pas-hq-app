@@ -8,6 +8,7 @@ use crate::{
         contracts::{
             repository::{
                 Pagination,
+                permission::PermissionRepository,
                 role::{CreateArgs, ListArgs, RoleRepository, UpdateArgs},
                 role_permission::{GrantArgs, RolePermissionRepository},
             },
@@ -28,6 +29,7 @@ use crate::{
 pub struct RoleManagement {
     roles: Arc<dyn RoleRepository>,
     role_permissions: Arc<dyn RolePermissionRepository>,
+    permissions: Arc<dyn PermissionRepository>,
     permission_guard: Arc<dyn PermissionGuard>,
     validator: Arc<dyn RoleValidator>,
     logger: Arc<dyn Logger>,
@@ -37,6 +39,7 @@ impl RoleManagement {
     pub fn new(
         roles: Arc<dyn RoleRepository>,
         role_permissions: Arc<dyn RolePermissionRepository>,
+        permissions: Arc<dyn PermissionRepository>,
         permission_guard: Arc<dyn PermissionGuard>,
         validator: Arc<dyn RoleValidator>,
         logger: Arc<dyn Logger>,
@@ -44,6 +47,7 @@ impl RoleManagement {
         Self {
             roles,
             role_permissions,
+            permissions,
             permission_guard,
             validator,
             logger,
@@ -240,7 +244,10 @@ impl ManageRole for RoleManagement {
         Box::pin(async move {
             self.permission_guard.require(context, &[ROLE_LIST]).await?;
 
-            self.role_permissions
+            // A role's grants are most useful as slugs, which is also what the
+            // permission guard compares against.
+            let grants = self
+                .role_permissions
                 .list_by_role(
                     context,
                     None,
@@ -251,11 +258,6 @@ impl ManageRole for RoleManagement {
                     },
                 )
                 .await
-                .map(|rows| {
-                    rows.into_iter()
-                        .map(|row| row.permission_id.to_string())
-                        .collect()
-                })
                 .map_err(|error| {
                     self.log_repository_error(
                         context,
@@ -263,7 +265,39 @@ impl ManageRole for RoleManagement {
                         &error,
                     );
                     UsecaseError::Repository(error)
-                })
+                })?;
+
+            let mut slugs = Vec::with_capacity(grants.len());
+            for grant in grants {
+                match self
+                    .permissions
+                    .find_by_id(context, None, grant.permission_id)
+                    .await
+                {
+                    Ok(Some(permission)) => slugs.push(permission.slug),
+                    Ok(None) => {
+                        self.logger.warn(
+                            context,
+                            "application/access/role/get_permissions",
+                            "a granted permission no longer exists and was skipped",
+                            Some(&Meta::from([(
+                                "permission_id".into(),
+                                grant.permission_id.into(),
+                            )])),
+                        );
+                    }
+                    Err(error) => {
+                        self.log_repository_error(
+                            context,
+                            "application/access/role/get_permissions",
+                            &error,
+                        );
+                        return Err(UsecaseError::Repository(error));
+                    }
+                }
+            }
+
+            Ok(slugs)
         })
     }
 

@@ -30,6 +30,23 @@ pub(crate) fn sign_in_error(error: UsecaseError) -> ApiError {
     }
 }
 
+pub(crate) fn profile_error(error: UsecaseError) -> ApiError {
+    match error {
+        UsecaseError::Unauthorized => ApiError::unauthorized(
+            "ACCOUNT_UNAVAILABLE",
+            "This account is inactive or suspended and cannot continue.",
+        ),
+        UsecaseError::Repository(_) => ApiError::internal(
+            "PROFILE_FAILED",
+            "We could not load your session right now. Please try again.",
+        ),
+        other => ApiError::internal(
+            "PROFILE_FAILED",
+            format!("We could not load your session. ({})", other.code()),
+        ),
+    }
+}
+
 pub(crate) fn refresh_error(error: UsecaseError) -> ApiError {
     match error {
         UsecaseError::Token(TokenError::Expired) => ApiError::unauthorized(

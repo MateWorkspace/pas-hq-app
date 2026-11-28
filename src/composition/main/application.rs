@@ -87,6 +87,7 @@ pub fn build(infrastructure: Infrastructure, logger: Arc<dyn Logger>, env: &AppE
         infrastructure.users.clone(),
         infrastructure.base_auths.clone(),
         infrastructure.roles.clone(),
+        infrastructure.permission_guard_cache.clone(),
         password.clone(),
         token,
         logger.clone(),

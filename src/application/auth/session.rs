@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use crate::domain::{
     contracts::{
-        repository::{base_auth::BaseAuthRepository, role::RoleRepository, user::UserRepository},
+        repository::{
+            base_auth::BaseAuthRepository, role::RoleRepository,
+            role_permission::RolePermissionRepository, user::UserRepository,
+        },
         utility::{Logger, Password, Token},
     },
     models::{
@@ -11,15 +14,18 @@ use crate::domain::{
     },
     usecases::{
         UsecaseFuture,
-        auth::session::{RefreshInput, Session, SessionTokens, SignInInput},
+        auth::session::{
+            RefreshInput, Session, SessionProfile, SessionTokens, SessionUser, SignInInput,
+        },
     },
 };
 
-/// Credential sign-in, access validation, and refresh.
+/// Credential sign-in, access validation, refresh, and session profile reads.
 pub struct SessionUsecase {
     users: Arc<dyn UserRepository>,
     base_auths: Arc<dyn BaseAuthRepository>,
     roles: Arc<dyn RoleRepository>,
+    role_permissions: Arc<dyn RolePermissionRepository>,
     password: Arc<dyn Password>,
     token: Arc<dyn Token>,
     logger: Arc<dyn Logger>,
@@ -30,6 +36,7 @@ impl SessionUsecase {
         users: Arc<dyn UserRepository>,
         base_auths: Arc<dyn BaseAuthRepository>,
         roles: Arc<dyn RoleRepository>,
+        role_permissions: Arc<dyn RolePermissionRepository>,
         password: Arc<dyn Password>,
         token: Arc<dyn Token>,
         logger: Arc<dyn Logger>,
@@ -38,6 +45,7 @@ impl SessionUsecase {
             users,
             base_auths,
             roles,
+            role_permissions,
             password,
             token,
             logger,
@@ -56,12 +64,12 @@ impl SessionUsecase {
     }
 
     /// Resolve the live identity and role behind a user id.
-    async fn claims_for(
+    async fn profile_for(
         &self,
         context: &AppContext,
         user_id: i64,
         tag: &str,
-    ) -> Result<AccessClaims, UsecaseError> {
+    ) -> Result<SessionProfile, UsecaseError> {
         let user = match self.users.find_by_id(context, None, user_id).await {
             Ok(Some(user)) => user,
             Ok(None) => {
@@ -80,15 +88,23 @@ impl SessionUsecase {
         };
 
         self.ensure_active(context, &user, tag)?;
-        self.claims_for_user(context, &user, tag).await
+        let session_user = self.session_user_for_user(context, &user, tag).await?;
+        let permissions = self
+            .permissions_for(context, &session_user.role, tag)
+            .await?;
+
+        Ok(SessionProfile {
+            user: session_user,
+            permissions,
+        })
     }
 
-    async fn claims_for_user(
+    async fn session_user_for_user(
         &self,
         context: &AppContext,
         user: &User,
         tag: &str,
-    ) -> Result<AccessClaims, UsecaseError> {
+    ) -> Result<SessionUser, UsecaseError> {
         let role = match self.roles.find_by_id(context, None, user.role_id).await {
             Ok(Some(role)) => role,
             Ok(None) => {
@@ -106,13 +122,34 @@ impl SessionUsecase {
             }
         };
 
-        Ok(AccessClaims {
-            user_id: user.id,
+        Ok(SessionUser {
+            id: user.id,
             name: user.name.clone(),
             role_id: role.id,
             role_name: role.name,
             role: role.slug,
         })
+    }
+
+    /// Effective permission slugs for a role. The repository decorator caches this
+    /// lookup, so a repeated profile read does not reach the database.
+    async fn permissions_for(
+        &self,
+        context: &AppContext,
+        role_slug: &str,
+        tag: &str,
+    ) -> Result<Vec<String>, UsecaseError> {
+        match self
+            .role_permissions
+            .find_by_role_slug(context, None, role_slug)
+            .await
+        {
+            Ok(permissions) => Ok(permissions),
+            Err(error) => {
+                self.log_repository_error(context, tag, &error);
+                Err(UsecaseError::Repository(error))
+            }
+        }
     }
 
     fn ensure_active(
@@ -146,21 +183,22 @@ impl SessionUsecase {
         Ok(())
     }
 
-    fn issue(&self, claims: &AccessClaims) -> Result<SessionTokens, UsecaseError> {
+    fn issue(&self, profile: &SessionProfile) -> Result<SessionTokens, UsecaseError> {
+        let claims = profile.user.claims();
         let refresh_claims = RefreshClaims {
             user_id: claims.user_id,
             name: claims.name.clone(),
         };
         let access_token = self
             .token
-            .generate_access(claims)
+            .generate_access(&claims)
             .map_err(UsecaseError::Token)?;
         let refresh_token = self.token.generate_refresh(&refresh_claims)?;
 
         Ok(SessionTokens {
             access_token,
             refresh_token,
-            claims: claims.clone(),
+            profile: profile.clone(),
         })
     }
 }
@@ -204,13 +242,13 @@ impl Session for SessionUsecase {
                 return Err(UsecaseError::Password(error));
             }
 
-            let claims = self
-                .claims_for(context, auth.user_id, "application/auth/session/sign_in")
+            let profile = self
+                .profile_for(context, auth.user_id, "application/auth/session/sign_in")
                 .await?;
 
-            let tokens = self.issue(&claims)?;
+            let tokens = self.issue(&profile)?;
 
-            let meta = Meta::from([("user_id".into(), claims.user_id.into())]);
+            let meta = Meta::from([("user_id".into(), profile.user.id.into())]);
             self.logger.info(
                 context,
                 "application/auth/session/sign_in",
@@ -264,17 +302,17 @@ impl Session for SessionUsecase {
                 }
             };
 
-            let claims = self
-                .claims_for(
+            let profile = self
+                .profile_for(
                     context,
                     refresh_claims.user_id,
                     "application/auth/session/refresh",
                 )
                 .await?;
 
-            let tokens = self.issue(&claims)?;
+            let tokens = self.issue(&profile)?;
 
-            let meta = Meta::from([("user_id".into(), claims.user_id.into())]);
+            let meta = Meta::from([("user_id".into(), profile.user.id.into())]);
             self.logger.info(
                 context,
                 "application/auth/session/refresh",
@@ -283,6 +321,23 @@ impl Session for SessionUsecase {
             );
 
             Ok(tokens)
+        })
+    }
+
+    fn profile<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionProfile> {
+        Box::pin(async move {
+            let Some(user_id) = context.actor_id() else {
+                self.logger.error(
+                    context,
+                    "application/auth/session/profile",
+                    "profile was requested without an authenticated context",
+                    None,
+                );
+                return Err(UsecaseError::Unauthorized);
+            };
+
+            self.profile_for(context, user_id, "application/auth/session/profile")
+                .await
         })
     }
 }

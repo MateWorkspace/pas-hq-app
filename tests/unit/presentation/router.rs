@@ -11,7 +11,10 @@ use pas_hq_app::{
         usecases::{
             UsecaseFuture,
             access::{ManageApiKey, ManagePermission, ManageRole, ManageUser},
-            auth::{ApiKeyAuth, RefreshInput, Session, SessionTokens, SignInInput},
+            auth::{
+                ApiKeyAuth, RefreshInput, Session, SessionProfile, SessionTokens, SessionUser,
+                SignInInput,
+            },
             catalog::{
                 ManagePrice, ManageProduct, ManageSku, ManageVariant, ManageVariantSelection,
                 RegenerateProductSkus,
@@ -131,6 +134,26 @@ impl Session for StubSession {
             Err(UsecaseError::Repository(
                 pas_hq_app::domain::models::RepositoryError::Unimplemented,
             ))
+        })
+    }
+
+    fn profile<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionProfile> {
+        let claims = context.claims.clone();
+        Box::pin(async move {
+            let Some(claims) = claims else {
+                return Err(UsecaseError::Unauthorized);
+            };
+
+            Ok(SessionProfile {
+                user: SessionUser {
+                    id: claims.user_id,
+                    name: claims.name,
+                    role_id: claims.role_id,
+                    role_name: claims.role_name,
+                    role: claims.role,
+                },
+                permissions: vec!["product:list".into(), "product:get".into()],
+            })
         })
     }
 }

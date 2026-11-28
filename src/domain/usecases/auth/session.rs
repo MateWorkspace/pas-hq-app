@@ -2,11 +2,12 @@ use crate::domain::models::{AccessClaims, AppContext};
 
 use super::super::UsecaseFuture;
 
-/// User session lifecycle: sign-in, access-token validation, and refresh.
+/// User session lifecycle: sign-in, access-token validation, refresh, and profile.
 ///
 /// Sign-in and refresh run under an unauthenticated ("open") context. Validation
 /// runs under a system context because the caller has no identity until it
-/// succeeds; the returned claims are then used to build the user context.
+/// succeeds; the returned claims are then used to build the user context. Profile
+/// reads run under an authenticated context and re-resolve live state.
 pub trait Session: Send + Sync {
     /// Exchange username/password credentials for an access and refresh pair.
     ///
@@ -36,6 +37,15 @@ pub trait Session: Send + Sync {
         context: &'a AppContext,
         input: RefreshInput,
     ) -> UsecaseFuture<'a, SessionTokens>;
+
+    /// Read the caller's live identity and effective permissions.
+    ///
+    /// The context must carry validated claims; the target is always
+    /// `context.actor_id()`, so no permission guard applies and no other user can
+    /// be addressed. Identity, role, and account state are re-read from storage so
+    /// a suspension, deactivation, or role change is corrected immediately instead
+    /// of at access-token expiry.
+    fn profile<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionProfile>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -49,10 +59,43 @@ pub struct RefreshInput {
     pub refresh_token: String,
 }
 
-/// A freshly issued token pair and the identity it belongs to.
+/// A freshly issued token pair and the session it belongs to.
+///
+/// Permissions travel with the pair so a client needs exactly one call after
+/// sign-in or refresh; there is no follow-up profile request.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SessionTokens {
     pub access_token: String,
     pub refresh_token: String,
-    pub claims: AccessClaims,
+    pub profile: SessionProfile,
+}
+
+/// Live identity plus its effective permission slugs.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SessionProfile {
+    pub user: SessionUser,
+    pub permissions: Vec<String>,
+}
+
+/// The identity carried by an access token, resolved from live storage.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SessionUser {
+    pub id: i64,
+    pub name: String,
+    pub role_id: i64,
+    pub role_name: String,
+    /// Stable role slug used for permission resolution.
+    pub role: String,
+}
+
+impl SessionUser {
+    pub fn claims(&self) -> AccessClaims {
+        AccessClaims {
+            user_id: self.id,
+            name: self.name.clone(),
+            role_id: self.role_id,
+            role_name: self.role_name.clone(),
+            role: self.role.clone(),
+        }
+    }
 }

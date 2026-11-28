@@ -19,7 +19,7 @@ pub fn router(dependencies: Dependencies, app_info: AppInfo) -> Router {
     let auth_api_key = Arc::clone(&state.validate_api_key);
 
     let public = Router::new()
-        .merge(handler::auth::routes())
+        .merge(handler::auth::public_routes())
         .merge(handler::version::routes(app_info))
         .layer(middleware::from_fn(move |request, next| {
             let create_app_context = Arc::clone(&open_context);
@@ -27,6 +27,7 @@ pub fn router(dependencies: Dependencies, app_info: AppInfo) -> Router {
         }));
 
     let protected = Router::new()
+        .merge(handler::auth::protected_routes())
         .merge(handler::access::routes())
         .merge(handler::catalog::routes())
         .merge(handler::inventory::routes())

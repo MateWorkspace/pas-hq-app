@@ -12,18 +12,27 @@ use crate::presentation::http::{
     Dependencies,
     dto::{
         request::auth::session::{RefreshRequest, SignInRequest},
-        response::{auth::ClaimsResponse, error::ApiError},
+        response::{
+            auth::{ProfileResponse, SessionResponse},
+            error::ApiError,
+        },
     },
     middleware::RequestContext,
 };
 
-use super::auth_errmap::{refresh_error, sign_in_error};
+use super::auth_errmap::{profile_error, refresh_error, sign_in_error};
 
-pub(crate) fn routes() -> Router<Arc<Dependencies>> {
+/// Credential exchange. Runs under an open context because no identity exists yet.
+pub(crate) fn public_routes() -> Router<Arc<Dependencies>> {
     Router::new()
         .route("/v1/auth/sign-in", post(sign_in))
         .route("/v1/auth/refresh", post(refresh))
-        .route("/v1/auth/me", get(current_user))
+}
+
+/// Session reads. Runs under the authenticated context so the caller's own
+/// identity and permissions can be resolved.
+pub(crate) fn protected_routes() -> Router<Arc<Dependencies>> {
+    Router::new().route("/v1/auth/me", get(current_user))
 }
 
 async fn sign_in(
@@ -38,19 +47,7 @@ async fn sign_in(
         .await
         .map_err(sign_in_error)?;
 
-    Ok((
-        StatusCode::OK,
-        Json(
-            crate::presentation::http::dto::response::auth::SessionResponse {
-                access_token: tokens.access_token,
-                refresh_token: tokens.refresh_token,
-                user: crate::presentation::http::dto::response::auth::SessionUserResponse {
-                    id: tokens.claims.user_id,
-                    name: tokens.claims.name,
-                },
-            },
-        ),
-    ))
+    Ok((StatusCode::OK, Json(SessionResponse::from(tokens))))
 }
 
 async fn refresh(
@@ -65,27 +62,18 @@ async fn refresh(
         .await
         .map_err(refresh_error)?;
 
-    Ok(Json(
-        crate::presentation::http::dto::response::auth::SessionResponse {
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            user: crate::presentation::http::dto::response::auth::SessionUserResponse {
-                id: tokens.claims.user_id,
-                name: tokens.claims.name,
-            },
-        },
-    ))
+    Ok(Json(SessionResponse::from(tokens)))
 }
 
 async fn current_user(
+    State(dependencies): State<Arc<Dependencies>>,
     RequestContext(context): RequestContext,
 ) -> Result<impl IntoResponse, ApiError> {
-    let Some(claims) = context.claims.as_ref() else {
-        return Err(ApiError::unauthorized(
-            "AUTHENTICATION_REQUIRED",
-            "You must be signed in to view your session.",
-        ));
-    };
+    let profile = dependencies
+        .session
+        .profile(&context)
+        .await
+        .map_err(profile_error)?;
 
-    Ok(Json(ClaimsResponse::from(claims)))
+    Ok(Json(ProfileResponse::from(profile)))
 }

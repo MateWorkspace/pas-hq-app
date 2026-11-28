@@ -43,6 +43,11 @@ Design posture worth knowing before changing anything:
   stock.
 - Permissions are never embedded in tokens. A token carries identity and role;
   the permission set is resolved from the role at authorization time and cached.
+- `Session::profile` re-reads the user and role from storage on every call, so a
+  deactivation, suspension, or role change takes effect on the caller's next
+  request instead of at access-token expiry. Sign-in, refresh, and `profile`
+  return the same `{ user, permissions }` shape, which lets a client resolve a
+  session in one call.
 
 ## Database Schema
 
@@ -229,7 +234,7 @@ grouped:
 
 | Group | Traits |
 |---|---|
-| `auth` | `Session` (sign_in, validate_access, refresh), `ApiKeyAuth` (validate_api_key) |
+| `auth` | `Session` (sign_in, validate_access, refresh, profile), `ApiKeyAuth` (validate_api_key) |
 | `access` | `ManageRole`, `ManagePermission`, `ManageUser`, `ManageApiKey` |
 | `profile` | `ManageAccount`, `ChangePassword`, `ManageOwnApiKey` |
 | `catalog` | `ManageProduct`, `ManageVariant`, `ManageVariantSelection`, `ManageSku`, `RegenerateProductSkus`, `ManagePrice` |
@@ -407,7 +412,8 @@ handler/<group>/     <resource>.rs + <resource>_errmap.rs
 
 - Public routes (`/v1/auth/sign-in`, `/v1/auth/refresh`, `/v1/version`) run
   `open()`: read `x-trace-id`, build a context with actor `open`, insert it into
-  request extensions.
+  request extensions. `/v1/auth/me` is **protected**: it resolves the caller's
+  live profile, so it needs validated claims.
 - Every other route runs `authenticated()`: read `x-trace-id`, read the bearer
   token, read `x-api-key`, then **prefer the bearer token** when both are
   present. Claims are resolved under a *system* context, because no identity
@@ -458,7 +464,7 @@ This keeps every mapping traceable to a single call site.
 GET    /version                      (public: build name and version only)
 
 POST   /auth/sign-in                 POST   /auth/refresh
-GET    /auth/me
+GET    /auth/me                      (protected: live user + permissions)
 
 GET    /profile                      PATCH  /profile
 PUT    /profile/password

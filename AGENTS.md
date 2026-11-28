@@ -43,11 +43,12 @@ Design posture worth knowing before changing anything:
   stock.
 - Permissions are never embedded in tokens. A token carries identity and role;
   the permission set is resolved from the role at authorization time and cached.
-- `Session::profile` re-reads the user and role from storage on every call, so a
+- `Session::whoami` re-reads the user and role from storage on every call, so a
   deactivation, suspension, or role change takes effect on the caller's next
-  request instead of at access-token expiry. Sign-in, refresh, and `profile`
+  request instead of at access-token expiry. Sign-in, refresh, and `whoami`
   return the same `{ user, permissions }` shape, which lets a client resolve a
-  session in one call.
+  session in one call. `whoami` deliberately avoids the `profile` name, which
+  belongs to the self-service usecase group.
 
 ## Database Schema
 

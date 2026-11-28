@@ -13,14 +13,14 @@ use crate::presentation::http::{
     dto::{
         request::auth::session::{RefreshRequest, SignInRequest},
         response::{
-            auth::{ProfileResponse, SessionResponse},
+            auth::{SessionResponse, WhoamiResponse},
             error::ApiError,
         },
     },
     middleware::RequestContext,
 };
 
-use super::auth_errmap::{profile_error, refresh_error, sign_in_error};
+use super::session_errmap::{refresh_error, sign_in_error, whoami_error};
 
 /// Credential exchange. Runs under an open context because no identity exists yet.
 pub(crate) fn public_routes() -> Router<Arc<Dependencies>> {
@@ -32,7 +32,7 @@ pub(crate) fn public_routes() -> Router<Arc<Dependencies>> {
 /// Session reads. Runs under the authenticated context so the caller's own
 /// identity and permissions can be resolved.
 pub(crate) fn protected_routes() -> Router<Arc<Dependencies>> {
-    Router::new().route("/v1/auth/me", get(current_user))
+    Router::new().route("/v1/auth/me", get(whoami))
 }
 
 async fn sign_in(
@@ -65,15 +65,15 @@ async fn refresh(
     Ok(Json(SessionResponse::from(tokens)))
 }
 
-async fn current_user(
+async fn whoami(
     State(dependencies): State<Arc<Dependencies>>,
     RequestContext(context): RequestContext,
 ) -> Result<impl IntoResponse, ApiError> {
-    let profile = dependencies
+    let snapshot = dependencies
         .session
-        .profile(&context)
+        .whoami(&context)
         .await
-        .map_err(profile_error)?;
+        .map_err(whoami_error)?;
 
-    Ok(Json(ProfileResponse::from(profile)))
+    Ok(Json(WhoamiResponse::from(snapshot)))
 }

@@ -15,12 +15,12 @@ use crate::domain::{
     usecases::{
         UsecaseFuture,
         auth::session::{
-            RefreshInput, Session, SessionProfile, SessionTokens, SessionUser, SignInInput,
+            RefreshInput, Session, SessionSnapshot, SessionTokens, SessionUser, SignInInput,
         },
     },
 };
 
-/// Credential sign-in, access validation, refresh, and session profile reads.
+/// Credential sign-in, access validation, refresh, and session snapshot reads.
 pub struct SessionUsecase {
     users: Arc<dyn UserRepository>,
     base_auths: Arc<dyn BaseAuthRepository>,
@@ -64,12 +64,12 @@ impl SessionUsecase {
     }
 
     /// Resolve the live identity and role behind a user id.
-    async fn profile_for(
+    async fn snapshot_for(
         &self,
         context: &AppContext,
         user_id: i64,
         tag: &str,
-    ) -> Result<SessionProfile, UsecaseError> {
+    ) -> Result<SessionSnapshot, UsecaseError> {
         let user = match self.users.find_by_id(context, None, user_id).await {
             Ok(Some(user)) => user,
             Ok(None) => {
@@ -93,7 +93,7 @@ impl SessionUsecase {
             .permissions_for(context, &session_user.role, tag)
             .await?;
 
-        Ok(SessionProfile {
+        Ok(SessionSnapshot {
             user: session_user,
             permissions,
         })
@@ -132,7 +132,7 @@ impl SessionUsecase {
     }
 
     /// Effective permission slugs for a role. The repository decorator caches this
-    /// lookup, so a repeated profile read does not reach the database.
+    /// lookup, so a repeated snapshot read does not reach the database.
     async fn permissions_for(
         &self,
         context: &AppContext,
@@ -183,8 +183,8 @@ impl SessionUsecase {
         Ok(())
     }
 
-    fn issue(&self, profile: &SessionProfile) -> Result<SessionTokens, UsecaseError> {
-        let claims = profile.user.claims();
+    fn issue(&self, snapshot: &SessionSnapshot) -> Result<SessionTokens, UsecaseError> {
+        let claims = snapshot.user.claims();
         let refresh_claims = RefreshClaims {
             user_id: claims.user_id,
             name: claims.name.clone(),
@@ -198,7 +198,7 @@ impl SessionUsecase {
         Ok(SessionTokens {
             access_token,
             refresh_token,
-            profile: profile.clone(),
+            snapshot: snapshot.clone(),
         })
     }
 }
@@ -242,13 +242,13 @@ impl Session for SessionUsecase {
                 return Err(UsecaseError::Password(error));
             }
 
-            let profile = self
-                .profile_for(context, auth.user_id, "application/auth/session/sign_in")
+            let snapshot = self
+                .snapshot_for(context, auth.user_id, "application/auth/session/sign_in")
                 .await?;
 
-            let tokens = self.issue(&profile)?;
+            let tokens = self.issue(&snapshot)?;
 
-            let meta = Meta::from([("user_id".into(), profile.user.id.into())]);
+            let meta = Meta::from([("user_id".into(), snapshot.user.id.into())]);
             self.logger.info(
                 context,
                 "application/auth/session/sign_in",
@@ -302,17 +302,17 @@ impl Session for SessionUsecase {
                 }
             };
 
-            let profile = self
-                .profile_for(
+            let snapshot = self
+                .snapshot_for(
                     context,
                     refresh_claims.user_id,
                     "application/auth/session/refresh",
                 )
                 .await?;
 
-            let tokens = self.issue(&profile)?;
+            let tokens = self.issue(&snapshot)?;
 
-            let meta = Meta::from([("user_id".into(), profile.user.id.into())]);
+            let meta = Meta::from([("user_id".into(), snapshot.user.id.into())]);
             self.logger.info(
                 context,
                 "application/auth/session/refresh",
@@ -324,19 +324,19 @@ impl Session for SessionUsecase {
         })
     }
 
-    fn profile<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionProfile> {
+    fn whoami<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionSnapshot> {
         Box::pin(async move {
             let Some(user_id) = context.actor_id() else {
                 self.logger.error(
                     context,
-                    "application/auth/session/profile",
-                    "profile was requested without an authenticated context",
+                    "application/auth/session/whoami",
+                    "whoami was requested without an authenticated context",
                     None,
                 );
                 return Err(UsecaseError::Unauthorized);
             };
 
-            self.profile_for(context, user_id, "application/auth/session/profile")
+            self.snapshot_for(context, user_id, "application/auth/session/whoami")
                 .await
         })
     }

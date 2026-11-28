@@ -30,18 +30,18 @@ pub(crate) fn sign_in_error(error: UsecaseError) -> ApiError {
     }
 }
 
-pub(crate) fn profile_error(error: UsecaseError) -> ApiError {
+pub(crate) fn whoami_error(error: UsecaseError) -> ApiError {
     match error {
         UsecaseError::Unauthorized => ApiError::unauthorized(
             "ACCOUNT_UNAVAILABLE",
             "This account is inactive or suspended and cannot continue.",
         ),
         UsecaseError::Repository(_) => ApiError::internal(
-            "PROFILE_FAILED",
+            "WHOAMI_FAILED",
             "We could not load your session right now. Please try again.",
         ),
         other => ApiError::internal(
-            "PROFILE_FAILED",
+            "WHOAMI_FAILED",
             format!("We could not load your session. ({})", other.code()),
         ),
     }

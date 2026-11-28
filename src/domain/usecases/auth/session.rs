@@ -38,14 +38,15 @@ pub trait Session: Send + Sync {
         input: RefreshInput,
     ) -> UsecaseFuture<'a, SessionTokens>;
 
-    /// Read the caller's live identity and effective permissions.
+    /// Report who the caller is right now, with their effective permissions.
     ///
     /// The context must carry validated claims; the target is always
     /// `context.actor_id()`, so no permission guard applies and no other user can
     /// be addressed. Identity, role, and account state are re-read from storage so
     /// a suspension, deactivation, or role change is corrected immediately instead
-    /// of at access-token expiry.
-    fn profile<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionProfile>;
+    /// of at access-token expiry, which is why the result is a snapshot rather
+    /// than something replayed from the token.
+    fn whoami<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionSnapshot>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -59,7 +60,7 @@ pub struct RefreshInput {
     pub refresh_token: String,
 }
 
-/// A freshly issued token pair and the session it belongs to.
+/// A freshly issued token pair and the snapshot it belongs to.
 ///
 /// Permissions travel with the pair so a client needs exactly one call after
 /// sign-in or refresh; there is no follow-up profile request.
@@ -67,12 +68,13 @@ pub struct RefreshInput {
 pub struct SessionTokens {
     pub access_token: String,
     pub refresh_token: String,
-    pub profile: SessionProfile,
+    pub snapshot: SessionSnapshot,
 }
 
-/// Live identity plus its effective permission slugs.
+/// A point-in-time snapshot of the caller: live identity plus its effective
+/// permission slugs.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SessionProfile {
+pub struct SessionSnapshot {
     pub user: SessionUser,
     pub permissions: Vec<String>,
 }

@@ -1,6 +1,6 @@
-use pas_hq_app::domain::usecases::auth::session::{SessionProfile, SessionTokens, SessionUser};
+use pas_hq_app::domain::usecases::auth::session::{SessionSnapshot, SessionTokens, SessionUser};
 use pas_hq_app::presentation::http::dto::response::auth::{
-    ProfileResponse, SessionResponse, SessionUserResponse,
+    SessionResponse, SessionUserResponse, WhoamiResponse,
 };
 
 fn user() -> SessionUser {
@@ -13,14 +13,14 @@ fn user() -> SessionUser {
     }
 }
 
-/// A session response always carries the profile and permissions it was built
+/// A session response always carries the snapshot and permissions it was built
 /// from, so a client needs exactly one call after sign-in or refresh.
 #[test]
-fn session_response_carries_tokens_and_profile() {
+fn session_response_carries_tokens_and_snapshot() {
     let response = SessionResponse::from(SessionTokens {
         access_token: "access".into(),
         refresh_token: "refresh".into(),
-        profile: SessionProfile {
+        snapshot: SessionSnapshot {
             user: user(),
             permissions: vec!["product:list".into(), "product:get".into()],
         },
@@ -33,10 +33,10 @@ fn session_response_carries_tokens_and_profile() {
     assert_eq!(response.permissions, ["product:list", "product:get"]);
 }
 
-/// The profile endpoint reports the same shape minus the tokens.
+/// The whoami endpoint reports the same shape minus the tokens.
 #[test]
-fn profile_response_carries_identity_and_permissions() {
-    let response = ProfileResponse::from(SessionProfile {
+fn whoami_response_carries_identity_and_permissions() {
+    let response = WhoamiResponse::from(SessionSnapshot {
         user: user(),
         permissions: vec!["stock:list".into()],
     });
@@ -47,7 +47,7 @@ fn profile_response_carries_identity_and_permissions() {
 }
 
 /// The token-facing view is derived from the same identity, so a token always
-/// agrees with the profile it was issued for.
+/// agrees with the snapshot it was issued for.
 #[test]
 fn session_user_projects_the_token_claims() {
     let claims = user().claims();

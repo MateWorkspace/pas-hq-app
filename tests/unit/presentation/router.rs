@@ -12,7 +12,7 @@ use pas_hq_app::{
             UsecaseFuture,
             access::{ManageApiKey, ManagePermission, ManageRole, ManageUser},
             auth::{
-                ApiKeyAuth, RefreshInput, Session, SessionProfile, SessionTokens, SessionUser,
+                ApiKeyAuth, RefreshInput, Session, SessionSnapshot, SessionTokens, SessionUser,
                 SignInInput,
             },
             catalog::{
@@ -137,14 +137,14 @@ impl Session for StubSession {
         })
     }
 
-    fn profile<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionProfile> {
+    fn whoami<'a>(&'a self, context: &'a AppContext) -> UsecaseFuture<'a, SessionSnapshot> {
         let claims = context.claims.clone();
         Box::pin(async move {
             let Some(claims) = claims else {
                 return Err(UsecaseError::Unauthorized);
             };
 
-            Ok(SessionProfile {
+            Ok(SessionSnapshot {
                 user: SessionUser {
                     id: claims.user_id,
                     name: claims.name,

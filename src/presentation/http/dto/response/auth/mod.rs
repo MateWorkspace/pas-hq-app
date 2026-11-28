@@ -1,10 +1,10 @@
 use serde::Serialize;
 
-use crate::domain::usecases::auth::session::{SessionProfile, SessionTokens, SessionUser};
+use crate::domain::usecases::auth::session::{SessionSnapshot, SessionTokens, SessionUser};
 
 /// The session body returned by sign-in and refresh.
 ///
-/// Tokens are issued once; the profile travels with them so a client needs no
+/// Tokens are issued once; the snapshot travels with them so a client needs no
 /// follow-up request.
 #[derive(Clone, Debug, Serialize)]
 pub struct SessionResponse {
@@ -14,9 +14,9 @@ pub struct SessionResponse {
     pub permissions: Vec<String>,
 }
 
-/// The session body returned by the profile endpoint.
+/// The body returned by `GET /v1/auth/me`: who the caller is right now.
 #[derive(Clone, Debug, Serialize)]
-pub struct ProfileResponse {
+pub struct WhoamiResponse {
     pub user: SessionUserResponse,
     pub permissions: Vec<String>,
 }
@@ -42,8 +42,8 @@ impl From<SessionUser> for SessionUserResponse {
     }
 }
 
-impl From<SessionProfile> for ProfileResponse {
-    fn from(value: SessionProfile) -> Self {
+impl From<SessionSnapshot> for WhoamiResponse {
+    fn from(value: SessionSnapshot) -> Self {
         Self {
             user: value.user.into(),
             permissions: value.permissions,
@@ -56,8 +56,8 @@ impl From<SessionTokens> for SessionResponse {
         Self {
             access_token: value.access_token,
             refresh_token: value.refresh_token,
-            user: value.profile.user.into(),
-            permissions: value.profile.permissions,
+            user: value.snapshot.user.into(),
+            permissions: value.snapshot.permissions,
         }
     }
 }

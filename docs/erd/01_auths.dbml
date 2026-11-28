@@ -78,6 +78,34 @@ one role. Credentials and login identifiers are stored separately in base_auths.
     }
 }
 
+Table api_keys [headercolor: #B91C1C] {
+    Note: '''
+Long-lived credentials for one user. A key carries the user's current role, so
+rotating a role takes effect on the next validation rather than on the key itself.
+
+Only the SHA-256 digest is stored: the raw key is shown once when it is created or
+rotated and never again. redacted is the safe display preview. is_active lets an
+administrator disable a key immediately without deleting it.
+'''
+
+    id          BIGINT      [pk, increment]
+    user_id     BIGINT      [not null]
+    name        TEXT        [not null, note: 'Label chosen by the owner; unique per user.']
+    description TEXT        [not null, default: '', note: 'Free-text note.']
+    redacted    TEXT        [not null, note: 'Display preview such as pas-a1b2…f9e0.']
+    hashed_key  TEXT        [not null, note: 'SHA-256 hex digest; never exposed.']
+    is_active   BOOLEAN     [not null, default: true, note: 'Disabled keys are rejected at validation.']
+    created_at  timestamptz [not null, default: `NOW()`]
+    updated_at  timestamptz
+    created_by  BIGINT
+    updated_by  BIGINT
+
+    Indexes {
+        (user_id, name) [unique, name: 'uq_api_keys_user_id_name']
+        hashed_key      [unique, name: 'uq_api_keys_hashed_key']
+    }
+}
+
 Table base_auths [headercolor: #DC2626] {
     Note: '''
 Username/password authentication data for exactly one user. Passwords are persisted

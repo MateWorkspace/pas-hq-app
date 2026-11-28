@@ -45,4 +45,15 @@ impl CreateAppContext for AppContextCreator {
     fn create_system<'a>(&'a self, trace_id: Option<uuid::Uuid>) -> UsecaseFuture<'a, AppContext> {
         Box::pin(async move { self.build("system", trace_id, None) })
     }
+
+    fn create_authenticated<'a>(
+        &'a self,
+        claims: AccessClaims,
+        trace_id: Option<uuid::Uuid>,
+    ) -> UsecaseFuture<'a, AppContext> {
+        Box::pin(async move {
+            let actor = Some(claims.name.clone());
+            Ok(self.factory.create(actor, trace_id, Some(claims)))
+        })
+    }
 }

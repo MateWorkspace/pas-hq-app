@@ -40,6 +40,12 @@ pub(crate) const STOCK_LIST: &str = "stock:list";
 pub(crate) const MOVEMENT_TRANSFER: &str = "movement:transfer";
 pub(crate) const MOVEMENT_LIST: &str = "movement:list";
 
+pub(crate) const APIKEY_LIST: &str = "apikey:list";
+pub(crate) const APIKEY_CREATE: &str = "apikey:create";
+pub(crate) const APIKEY_ROTATE: &str = "apikey:rotate";
+pub(crate) const APIKEY_UPDATE: &str = "apikey:update";
+pub(crate) const APIKEY_DELETE: &str = "apikey:delete";
+
 pub(crate) const LOCATION_CREATE: &str = "location:create";
 pub(crate) const LOCATION_UPDATE: &str = "location:update";
 pub(crate) const LOCATION_DELETE: &str = "location:delete";

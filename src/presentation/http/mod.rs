@@ -14,12 +14,15 @@ pub use crate::presentation::http::middleware::RequestContext;
 pub struct Dependencies {
     pub create_app_context: Arc<dyn crate::domain::usecases::misc::CreateAppContext>,
     pub session: Arc<dyn crate::domain::usecases::auth::Session>,
+    pub validate_api_key: Arc<dyn crate::domain::usecases::auth::ApiKeyAuth>,
 
     pub manage_role: Arc<dyn crate::domain::usecases::access::ManageRole>,
     pub manage_permission: Arc<dyn crate::domain::usecases::access::ManagePermission>,
     pub manage_user: Arc<dyn crate::domain::usecases::access::ManageUser>,
+    pub manage_api_key: Arc<dyn crate::domain::usecases::access::ManageApiKey>,
 
     pub manage_account: Arc<dyn crate::domain::usecases::profile::ManageAccount>,
+    pub manage_own_api_key: Arc<dyn crate::domain::usecases::profile::ManageOwnApiKey>,
     pub change_password: Arc<dyn crate::domain::usecases::profile::ChangePassword>,
 
     pub manage_product: Arc<dyn crate::domain::usecases::catalog::ManageProduct>,

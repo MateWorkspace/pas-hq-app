@@ -10,8 +10,8 @@ use pas_hq_app::{
         models::{AccessClaims, AppContext, TokenError, UsecaseError},
         usecases::{
             UsecaseFuture,
-            access::{ManagePermission, ManageRole, ManageUser},
-            auth::{RefreshInput, Session, SessionTokens, SignInInput},
+            access::{ManageApiKey, ManagePermission, ManageRole, ManageUser},
+            auth::{ApiKeyAuth, RefreshInput, Session, SessionTokens, SignInInput},
             catalog::{
                 ManagePrice, ManageProduct, ManageSku, ManageVariant, ManageVariantSelection,
                 RegenerateProductSkus,
@@ -19,7 +19,7 @@ use pas_hq_app::{
             inventory::{AdjustStock, GetStock, ListStock, RecordMovement},
             location::ManageLocation,
             misc::CreateAppContext,
-            profile::{ChangePassword, ManageAccount},
+            profile::{ChangePassword, ManageAccount, ManageOwnApiKey},
         },
     },
     presentation::http::{Dependencies, router},
@@ -66,6 +66,21 @@ impl CreateAppContext for StubContext {
                 trace_id,
                 execution_id: Some(uuid::Uuid::new_v4()),
                 claims: None,
+            })
+        })
+    }
+
+    fn create_authenticated<'a>(
+        &'a self,
+        claims: AccessClaims,
+        trace_id: Option<uuid::Uuid>,
+    ) -> UsecaseFuture<'a, AppContext> {
+        Box::pin(async move {
+            Ok(AppContext {
+                actor: Some(claims.name.clone()),
+                trace_id,
+                execution_id: Some(uuid::Uuid::new_v4()),
+                claims: Some(claims),
             })
         })
     }
@@ -142,6 +157,9 @@ stub_usecase!(StubStockAdjust);
 stub_usecase!(StubStockList);
 stub_usecase!(StubMovement);
 stub_usecase!(StubLocation);
+stub_usecase!(StubApiKeyAuth);
+stub_usecase!(StubManageApiKey);
+stub_usecase!(StubManageOwnApiKey);
 
 fn unreachable_repository<'a, T: Send + 'a>() -> UsecaseFuture<'a, T> {
     Box::pin(async {
@@ -527,6 +545,105 @@ impl ManageLocation for StubLocation {
     }
 }
 
+impl ApiKeyAuth for StubApiKeyAuth {
+    fn validate_api_key<'a>(
+        &'a self,
+        _context: &'a AppContext,
+        raw_key: &'a str,
+    ) -> UsecaseFuture<'a, AccessClaims> {
+        let key = raw_key.to_owned();
+        Box::pin(async move {
+            if key == "pas-valid" {
+                Ok(AccessClaims {
+                    user_id: 1,
+                    name: "Ada".into(),
+                    role_id: 2,
+                    role_name: "Administrator".into(),
+                    role: "admin".into(),
+                })
+            } else {
+                Err(UsecaseError::Unauthorized)
+            }
+        })
+    }
+}
+
+impl ManageApiKey for StubManageApiKey {
+    fn list_api_keys<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: pas_hq_app::domain::usecases::Page,
+    ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::ApiKey>> {
+        unreachable_repository()
+    }
+    fn list_user_api_keys<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: pas_hq_app::domain::usecases::access::api_key::ListUserApiKeys,
+    ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::ApiKey>> {
+        unreachable_repository()
+    }
+    fn create_api_key<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: pas_hq_app::domain::usecases::access::api_key::CreateApiKey,
+    ) -> UsecaseFuture<'a, pas_hq_app::domain::usecases::auth::api_key::IssuedApiKey> {
+        unreachable_repository()
+    }
+    fn rotate_api_key<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: i64,
+    ) -> UsecaseFuture<'a, pas_hq_app::domain::usecases::auth::api_key::IssuedApiKey> {
+        unreachable_repository()
+    }
+    fn set_api_key_active<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: pas_hq_app::domain::usecases::access::api_key::SetApiKeyActive,
+    ) -> UsecaseFuture<'a, pas_hq_app::domain::models::entity::ApiKey> {
+        unreachable_repository()
+    }
+    fn delete_api_key<'a>(&'a self, _: &'a AppContext, _: i64) -> UsecaseFuture<'a, ()> {
+        unreachable_repository()
+    }
+}
+
+impl ManageOwnApiKey for StubManageOwnApiKey {
+    fn list_own_api_keys<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: pas_hq_app::domain::usecases::Page,
+    ) -> UsecaseFuture<'a, Vec<pas_hq_app::domain::models::entity::ApiKey>> {
+        unreachable_repository()
+    }
+    fn create_own_api_key<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: pas_hq_app::domain::usecases::profile::api_key::CreateOwnApiKey,
+    ) -> UsecaseFuture<'a, pas_hq_app::domain::usecases::auth::api_key::IssuedApiKey> {
+        unreachable_repository()
+    }
+    fn rotate_own_api_key<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: i64,
+    ) -> UsecaseFuture<'a, pas_hq_app::domain::usecases::auth::api_key::IssuedApiKey> {
+        unreachable_repository()
+    }
+    fn set_own_api_key_active<'a>(
+        &'a self,
+        _: &'a AppContext,
+        _: i64,
+        _: bool,
+    ) -> UsecaseFuture<'a, pas_hq_app::domain::models::entity::ApiKey> {
+        unreachable_repository()
+    }
+    fn delete_own_api_key<'a>(&'a self, _: &'a AppContext, _: i64) -> UsecaseFuture<'a, ()> {
+        unreachable_repository()
+    }
+}
+
 fn dependencies() -> Dependencies {
     let logger: Arc<dyn Logger> = Arc::new(
         pas_hq_app::infrastructure::utility::logger::WriterLogger::new(
@@ -539,6 +656,9 @@ fn dependencies() -> Dependencies {
     Dependencies {
         create_app_context: Arc::new(StubContext { logger }),
         session: Arc::new(StubSession),
+        validate_api_key: Arc::new(StubApiKeyAuth),
+        manage_api_key: Arc::new(StubManageApiKey),
+        manage_own_api_key: Arc::new(StubManageOwnApiKey),
         manage_role: Arc::new(StubRole),
         manage_permission: Arc::new(StubPermission),
         manage_user: Arc::new(StubUser),
@@ -591,6 +711,64 @@ async fn protected_route_with_invalid_token_is_unauthorized() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn an_api_key_authenticates_a_protected_route() {
+    let app = router(dependencies());
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/products")
+                .header("x-api-key", "pas-valid")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // The stub usecase lists nothing; reaching the handler proves authentication
+    // succeeded, so this must not be 401.
+    assert_ne!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn an_invalid_api_key_is_unauthorized() {
+    let app = router(dependencies());
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/products")
+                .header("x-api-key", "pas-wrong")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn a_bearer_token_takes_precedence_over_an_api_key() {
+    let app = router(dependencies());
+
+    // Bearer is valid and the API key is not: preferring bearer must succeed.
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/products")
+                .header("authorization", "Bearer good-token")
+                .header("x-api-key", "pas-wrong")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_ne!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

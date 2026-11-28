@@ -30,6 +30,9 @@ pub enum RepositoryError {
     UserNotFound,
     UserRoleNotFound,
 
+    ApiKeyNotFound,
+    ApiKeyNameConflict,
+
     BaseAuthNotFound,
     BaseAuthUsernameConflict,
     BaseAuthEmailConflict,
@@ -79,6 +82,8 @@ impl RepositoryError {
             Self::RolePermissionConflict => "ROLE_PERMISSION_CONFLICT",
             Self::UserNotFound => "USER_NOT_FOUND",
             Self::UserRoleNotFound => "USER_ROLE_NOT_FOUND",
+            Self::ApiKeyNotFound => "API_KEY_NOT_FOUND",
+            Self::ApiKeyNameConflict => "API_KEY_NAME_CONFLICT",
             Self::BaseAuthNotFound => "BASE_AUTH_NOT_FOUND",
             Self::BaseAuthUsernameConflict => "BASE_AUTH_USERNAME_CONFLICT",
             Self::BaseAuthEmailConflict => "BASE_AUTH_EMAIL_CONFLICT",
@@ -124,6 +129,8 @@ impl fmt::Display for RepositoryError {
             Self::RolePermissionConflict => "role permission grant already exists",
             Self::UserNotFound => "user was not found",
             Self::UserRoleNotFound => "user role was not found",
+            Self::ApiKeyNotFound => "api key was not found",
+            Self::ApiKeyNameConflict => "api key name conflicts with existing data",
             Self::BaseAuthNotFound => "base authentication record was not found",
             Self::BaseAuthUsernameConflict => "username conflicts with existing data",
             Self::BaseAuthEmailConflict => "email conflicts with existing data",

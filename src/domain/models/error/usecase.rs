@@ -1,6 +1,6 @@
 use std::{error::Error as StdError, fmt};
 
-use super::{PasswordError, RepositoryError, TokenError, ValidatorError};
+use super::{ApiKeyError, PasswordError, RepositoryError, TokenError, ValidatorError};
 
 /// Application failures preserve the classification of the capability that failed.
 #[derive(Debug)]
@@ -9,6 +9,7 @@ pub enum UsecaseError {
     Repository(RepositoryError),
     Password(PasswordError),
     Token(TokenError),
+    ApiKey(ApiKeyError),
     Forbidden,
     Unauthorized,
     Database(sqlx::Error),
@@ -21,6 +22,7 @@ impl UsecaseError {
             Self::Repository(error) => error.code(),
             Self::Password(error) => error.code(),
             Self::Token(error) => error.code(),
+            Self::ApiKey(error) => error.code(),
             Self::Forbidden => "FORBIDDEN",
             Self::Unauthorized => "UNAUTHORIZED",
             Self::Database(_) => "DATABASE_FAILURE",
@@ -35,6 +37,7 @@ impl fmt::Display for UsecaseError {
             Self::Repository(error) => error.fmt(formatter),
             Self::Password(error) => error.fmt(formatter),
             Self::Token(error) => error.fmt(formatter),
+            Self::ApiKey(error) => error.fmt(formatter),
             Self::Forbidden => formatter.write_str("permission is required for this operation"),
             Self::Unauthorized => formatter.write_str("the request is not authenticated"),
             Self::Database(error) => write!(formatter, "database operation failed: {error}"),
@@ -49,6 +52,7 @@ impl StdError for UsecaseError {
             Self::Repository(error) => Some(error),
             Self::Password(error) => Some(error),
             Self::Token(error) => Some(error),
+            Self::ApiKey(error) => Some(error),
             Self::Database(error) => Some(error),
             Self::Forbidden | Self::Unauthorized => None,
         }
@@ -76,6 +80,12 @@ impl From<PasswordError> for UsecaseError {
 impl From<TokenError> for UsecaseError {
     fn from(error: TokenError) -> Self {
         Self::Token(error)
+    }
+}
+
+impl From<ApiKeyError> for UsecaseError {
+    fn from(error: ApiKeyError) -> Self {
+        Self::ApiKey(error)
     }
 }
 

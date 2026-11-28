@@ -1,3 +1,4 @@
+mod api_key;
 mod auth;
 mod location;
 mod permission;
@@ -6,6 +7,7 @@ mod role;
 mod shared;
 mod user;
 
+pub use api_key::RegexApiKeyValidator;
 pub use auth::RegexAuthValidator;
 pub use location::RegexLocationValidator;
 pub use permission::RegexPermissionValidator;

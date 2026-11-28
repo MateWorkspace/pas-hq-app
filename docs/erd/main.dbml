@@ -23,6 +23,7 @@ use * from './03_inventory.dbml'
 
 Ref: users.role_id > roles.id [delete: restrict, update: restrict]
 Ref: base_auths.user_id > users.id [delete: restrict, update: restrict]
+Ref: api_keys.user_id > users.id [delete: restrict, update: restrict]
 Ref: role_permission.role_id > roles.id [delete: cascade, update: restrict]
 Ref: role_permission.permission_id > permissions.id [delete: cascade, update: restrict]
 

@@ -1,3 +1,4 @@
+pub(crate) mod api_key;
 pub(crate) mod base_auth;
 pub(crate) mod inventory;
 pub(crate) mod location;

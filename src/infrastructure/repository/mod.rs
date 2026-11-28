@@ -1,3 +1,4 @@
+pub mod api_key;
 pub mod base_auth;
 pub mod inventory;
 pub mod location;
@@ -14,6 +15,7 @@ pub mod user;
 
 mod shared;
 
+pub use api_key::PostgresApiKey;
 pub use base_auth::PostgresBaseAuth;
 pub use inventory::PostgresInventory;
 pub use location::PostgresLocation;

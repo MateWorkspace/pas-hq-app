@@ -1,11 +1,14 @@
 use axum::Router;
-use tower_http::catch_panic::CatchPanicLayer;
-
 use axum::response::IntoResponse;
+use tower_http::catch_panic::CatchPanicLayer;
 
 use crate::presentation::http::dto::response::error::ApiError;
 
+pub(crate) mod api_key;
+pub(crate) mod bearer;
 pub(crate) mod context;
+pub(crate) mod header;
+pub(crate) mod trace_id;
 
 pub use context::RequestContext;
 

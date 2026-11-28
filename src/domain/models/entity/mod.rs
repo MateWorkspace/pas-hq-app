@@ -1,3 +1,4 @@
+pub mod api_key;
 pub mod base_auth;
 pub mod claims;
 pub mod inventory;
@@ -13,6 +14,7 @@ pub mod role_permission;
 pub mod stock_movement;
 pub mod user;
 
+pub use api_key::ApiKey;
 pub use base_auth::BaseAuth;
 pub use claims::{AccessClaims, RefreshClaims};
 pub use inventory::Inventory;

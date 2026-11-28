@@ -1,19 +1,24 @@
+use std::sync::Arc;
+
 use axum::{
     extract::{FromRequestParts, Request},
-    http::{HeaderMap, request::Parts},
+    http::request::Parts,
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use std::sync::Arc;
-use uuid::Uuid;
 
 use crate::{
     domain::{
         models::{AppContext, UsecaseError},
-        usecases::{auth::Session, misc::CreateAppContext},
+        usecases::{
+            auth::{ApiKeyAuth, Session},
+            misc::CreateAppContext,
+        },
     },
     presentation::http::dto::response::error::ApiError,
 };
+
+use super::{api_key, bearer, trace_id};
 
 /// The authenticated request context extracted by handlers.
 #[derive(Clone)]
@@ -28,12 +33,12 @@ pub(crate) async fn open(
     mut request: Request,
     next: Next,
 ) -> Response {
-    let trace_id = match trace_id(request.headers()) {
-        Ok(trace_id) => trace_id,
+    let trace = match trace_id::from_headers(request.headers()) {
+        Ok(trace) => trace,
         Err(error) => return error.into_response(),
     };
 
-    match create_app_context.create_open(trace_id).await {
+    match create_app_context.create_open(trace).await {
         Ok(context) => {
             request.extensions_mut().insert(context);
             next.run(request).await
@@ -46,24 +51,42 @@ pub(crate) async fn open(
     }
 }
 
-/// Validates the bearer token and builds a context carrying the user's claims.
+/// Resolves the caller's credentials and builds an authenticated context.
+///
+/// A bearer token takes precedence over an API key when both are present. The
+/// claims are resolved under a system context, because there is no identity until
+/// validation succeeds.
 pub(crate) async fn authenticated(
     create_app_context: Arc<dyn CreateAppContext>,
     session: Arc<dyn Session>,
+    api_keys: Arc<dyn ApiKeyAuth>,
     mut request: Request,
     next: Next,
 ) -> Response {
-    let trace_id = match trace_id(request.headers()) {
-        Ok(trace_id) => trace_id,
+    let trace = match trace_id::from_headers(request.headers()) {
+        Ok(trace) => trace,
         Err(error) => return error.into_response(),
     };
 
-    let token = match bearer_token(request.headers()) {
+    let bearer_token = match bearer::token(request.headers()) {
         Ok(token) => token,
         Err(error) => return error.into_response(),
     };
 
-    let system = match create_app_context.create_system(trace_id).await {
+    let api_key_value = match api_key::key(request.headers()) {
+        Ok(value) => value,
+        Err(error) => return error.into_response(),
+    };
+
+    if bearer_token.is_none() && api_key_value.is_none() {
+        return ApiError::unauthorized(
+            "AUTHORIZATION_REQUIRED",
+            "A bearer token or API key is required to access this resource.",
+        )
+        .into_response();
+    }
+
+    let system = match create_app_context.create_system(trace).await {
         Ok(context) => context,
         Err(error) => {
             return ApiError::internal(
@@ -74,29 +97,20 @@ pub(crate) async fn authenticated(
         }
     };
 
-    let claims = match session.validate_access(&system, token.as_str()).await {
-        Ok(claims) => claims,
-        Err(UsecaseError::Token(_)) => {
-            return ApiError::unauthorized(
-                "ACCESS_TOKEN_INVALID",
-                "Your session has expired or is not valid. Please sign in again.",
-            )
-            .into_response();
+    let claims = if let Some(token) = bearer_token {
+        match session.validate_access(&system, token.as_str()).await {
+            Ok(claims) => claims,
+            Err(error) => return access_error(error),
         }
-        Err(error) => {
-            return ApiError::internal(
-                "ACCESS_VALIDATION_FAILED",
-                format!("Your session could not be verified. ({})", error.code()),
-            )
-            .into_response();
+    } else {
+        let value = api_key_value.unwrap_or_default();
+        match api_keys.validate_api_key(&system, value.as_str()).await {
+            Ok(claims) => claims,
+            Err(error) => return api_key_error(error),
         }
     };
 
-    let actor = Some(claims.name.clone());
-    match create_app_context
-        .create(actor, trace_id, Some(claims))
-        .await
-    {
+    match create_app_context.create_authenticated(claims, trace).await {
         Ok(context) => {
             request.extensions_mut().insert(context);
             next.run(request).await
@@ -109,72 +123,32 @@ pub(crate) async fn authenticated(
     }
 }
 
-fn trace_id(headers: &HeaderMap) -> Result<Option<Uuid>, ApiError> {
-    let Some(value) = single_header(headers, "x-trace-id")? else {
-        return Ok(None);
-    };
-    let trace_id = Uuid::parse_str(&value).map_err(|_| {
-        ApiError::bad_request("TRACE_ID_INVALID", "The x-trace-id header must be a UUID.")
-    })?;
-    if trace_id.is_nil() {
-        return Err(ApiError::bad_request(
-            "TRACE_ID_INVALID",
-            "The x-trace-id header must not be the zero UUID.",
-        ));
+fn access_error(error: UsecaseError) -> Response {
+    match error {
+        UsecaseError::Token(_) => ApiError::unauthorized(
+            "ACCESS_TOKEN_INVALID",
+            "Your session has expired or is not valid. Please sign in again.",
+        ),
+        other => ApiError::internal(
+            "ACCESS_VALIDATION_FAILED",
+            format!("Your session could not be verified. ({})", other.code()),
+        ),
     }
-    Ok(Some(trace_id))
+    .into_response()
 }
 
-fn bearer_token(headers: &HeaderMap) -> Result<String, ApiError> {
-    let Some(value) = single_header(headers, "authorization")? else {
-        return Err(ApiError::unauthorized(
-            "AUTHORIZATION_REQUIRED",
-            "A bearer token is required to access this resource.",
-        ));
-    };
-
-    let mut parts = value.split_whitespace();
-    let (Some(scheme), Some(token), None) = (parts.next(), parts.next(), parts.next()) else {
-        return Err(ApiError::unauthorized(
-            "AUTHORIZATION_INVALID",
-            "The Authorization header must use the form \"Bearer <token>\".",
-        ));
-    };
-
-    if !scheme.eq_ignore_ascii_case("bearer") {
-        return Err(ApiError::unauthorized(
-            "AUTHORIZATION_INVALID",
-            "The Authorization header must use the Bearer scheme.",
-        ));
+fn api_key_error(error: UsecaseError) -> Response {
+    match error {
+        UsecaseError::Unauthorized => ApiError::unauthorized(
+            "API_KEY_INVALID",
+            "The API key is invalid, disabled, or its owner may not authenticate.",
+        ),
+        other => ApiError::internal(
+            "API_KEY_VALIDATION_FAILED",
+            format!("Your API key could not be verified. ({})", other.code()),
+        ),
     }
-
-    Ok(token.to_owned())
-}
-
-fn single_header(headers: &HeaderMap, key: &str) -> Result<Option<String>, ApiError> {
-    let mut values = headers.get_all(key).iter();
-    let Some(value) = values.next() else {
-        return Ok(None);
-    };
-    if values.next().is_some() {
-        return Err(ApiError::bad_request(
-            "REQUEST_HEADER_DUPLICATED",
-            format!("The {key} header must appear exactly once."),
-        ));
-    }
-    let value = value.to_str().map_err(|_| {
-        ApiError::bad_request(
-            "REQUEST_HEADER_INVALID",
-            format!("The {key} header must be plain ASCII text."),
-        )
-    })?;
-    if value.trim().is_empty() {
-        return Err(ApiError::bad_request(
-            "REQUEST_HEADER_INVALID",
-            format!("The {key} header must not be empty."),
-        ));
-    }
-    Ok(Some(value.to_owned()))
+    .into_response()
 }
 
 impl<S> FromRequestParts<S> for RequestContext

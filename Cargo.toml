@@ -1,6 +1,6 @@
 [package]
 name = "pas-hq-app"
-version = "0.1.0"
+version = "0.1.0-dev.1"
 edition = "2024"
 autotests = false
 
@@ -10,8 +10,11 @@ path = "tests/unit/main.rs"
 
 [dependencies]
 axum = "0.8"
+base64 = "0.22"
 bcrypt = "0.19"
 bigdecimal = "0.4"
+getrandom = "0.3"
+dotenvy = "0.15"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 jsonwebtoken = "9"
 moka = { version = "0.12", default-features = false, features = ["sync"] }
@@ -19,7 +22,8 @@ redis = { version = "1", default-features = false, features = ["tokio-comp", "co
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "=0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "chrono", "bigdecimal"] }
+sha2 = "0.10"
+sqlx = { version = "=0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring-webpki", "chrono", "bigdecimal", "migrate", "macros"] }
 tower-http = { version = "0.6", features = ["catch-panic"] }
 uuid = { version = "1", features = ["v4"] }
 

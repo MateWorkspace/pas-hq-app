@@ -26,12 +26,17 @@ use crate::{
 };
 
 use crate::{
-    domain::contracts::utility::Transactor, infrastructure::utility::transactor::PgTransactor,
+    domain::contracts::{
+        caching::ApiKeyClaimsCache, repository::api_key::ApiKeyRepository, utility::Transactor,
+    },
+    infrastructure::utility::transactor::PgTransactor,
 };
 
 pub struct UserManagement {
     users: Arc<dyn UserRepository>,
     base_auths: Arc<dyn BaseAuthRepository>,
+    api_keys: Arc<dyn ApiKeyRepository>,
+    api_key_cache: Arc<dyn ApiKeyClaimsCache>,
     transactor: Arc<PgTransactor>,
     permission_guard: Arc<dyn PermissionGuard>,
     auth_validator: Arc<dyn AuthValidator>,
@@ -45,6 +50,8 @@ impl UserManagement {
     pub fn new(
         users: Arc<dyn UserRepository>,
         base_auths: Arc<dyn BaseAuthRepository>,
+        api_keys: Arc<dyn ApiKeyRepository>,
+        api_key_cache: Arc<dyn ApiKeyClaimsCache>,
         transactor: Arc<PgTransactor>,
         permission_guard: Arc<dyn PermissionGuard>,
         auth_validator: Arc<dyn AuthValidator>,
@@ -55,6 +62,8 @@ impl UserManagement {
         Self {
             users,
             base_auths,
+            api_keys,
+            api_key_cache,
             transactor,
             permission_guard,
             auth_validator,
@@ -74,6 +83,37 @@ impl UserManagement {
         let meta = Meta::from([("error_code".into(), error.code().into())]);
         self.logger
             .error(context, tag, &error.to_string(), Some(&meta));
+    }
+
+    /// Drop cached claims for every key the user owns.
+    async fn invalidate_user_api_keys(&self, context: &AppContext, user_id: i64, tag: &str) {
+        match self
+            .api_keys
+            .list_by_user(
+                context,
+                None,
+                user_id,
+                Pagination {
+                    limit: 1_000,
+                    offset: 0,
+                },
+            )
+            .await
+        {
+            Ok(keys) => {
+                for key in keys {
+                    self.api_key_cache.remove(context, &key.hashed_key).await;
+                }
+            }
+            Err(error) => {
+                self.logger.warn(
+                    context,
+                    tag,
+                    "cached api key claims could not be invalidated after a user change",
+                    Some(&Meta::from([("error_code".into(), error.code().into())])),
+                );
+            }
+        }
     }
 
     fn log_validation_error(&self, context: &AppContext, tag: &str, error: &ValidatorError) {
@@ -213,6 +253,13 @@ impl ManageUser for UserManagement {
                 return Err(UsecaseError::Validation(error));
             }
 
+            // A cached key carries the user's role, so any identity-bearing change
+            // must drop the cached claims instead of waiting for the TTL.
+            let invalidates_credentials = input.role_id.is_some()
+                || input.is_active.is_some()
+                || input.suspended_until.is_some()
+                || input.clear_suspended_until;
+
             match self
                 .users
                 .update(
@@ -233,6 +280,14 @@ impl ManageUser for UserManagement {
                 .await
             {
                 Ok(user) => {
+                    if invalidates_credentials {
+                        self.invalidate_user_api_keys(
+                            context,
+                            user.id,
+                            "application/access/user/update",
+                        )
+                        .await;
+                    }
                     let meta = Meta::from([("user_id".into(), user.id.into())]);
                     self.logger.info(
                         context,
@@ -258,6 +313,7 @@ impl ManageUser for UserManagement {
 
             let users = Arc::clone(&self.users);
             let base_auths = Arc::clone(&self.base_auths);
+            let api_keys = Arc::clone(&self.api_keys);
             let scoped = context.clone();
 
             let result = self
@@ -265,6 +321,7 @@ impl ManageUser for UserManagement {
                 .with_tx(move |executor| {
                     let users = Arc::clone(&users);
                     let base_auths = Arc::clone(&base_auths);
+                    let api_keys = Arc::clone(&api_keys);
                     let scoped = scoped.clone();
                     Box::pin(async move {
                         if let Some(auth) = base_auths
@@ -273,19 +330,28 @@ impl ManageUser for UserManagement {
                         {
                             base_auths.delete(&scoped, Some(executor), auth.id).await?;
                         }
+                        let key_hashes = api_keys
+                            .delete_by_user_id(&scoped, Some(executor), id)
+                            .await?;
                         users.delete(&scoped, Some(executor), id).await?;
-                        Ok::<_, UsecaseError>(())
+                        Ok::<_, UsecaseError>(key_hashes)
                     })
                 })
                 .await;
 
             match result {
-                Ok(()) => {
-                    let meta = Meta::from([("user_id".into(), id.into())]);
+                Ok(key_hashes) => {
+                    for key_hash in &key_hashes {
+                        self.api_key_cache.remove(context, key_hash).await;
+                    }
+                    let meta = Meta::from([
+                        ("user_id".into(), id.into()),
+                        ("api_key_count".into(), (key_hashes.len() as u64).into()),
+                    ]);
                     self.logger.info(
                         context,
                         "application/access/user/delete",
-                        "user and credentials deleted",
+                        "user, credentials, and api keys deleted",
                         Some(&meta),
                     );
                     Ok(())

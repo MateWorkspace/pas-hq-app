@@ -14,6 +14,7 @@ pub fn router(dependencies: Dependencies) -> Router {
     let open_context = Arc::clone(&state.create_app_context);
     let auth_context = Arc::clone(&state.create_app_context);
     let auth_session = Arc::clone(&state.session);
+    let auth_api_key = Arc::clone(&state.validate_api_key);
 
     let public = Router::new()
         .merge(handler::auth::routes())
@@ -31,7 +32,10 @@ pub fn router(dependencies: Dependencies) -> Router {
         .layer(middleware::from_fn(move |request, next| {
             let create_app_context = Arc::clone(&auth_context);
             let session = Arc::clone(&auth_session);
-            async move { context::authenticated(create_app_context, session, request, next).await }
+            let api_keys = Arc::clone(&auth_api_key);
+            async move {
+                context::authenticated(create_app_context, session, api_keys, request, next).await
+            }
         }));
 
     super::middleware::recovery(
